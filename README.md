@@ -1,4 +1,4 @@
-# Claude Code Agents & Skills
+# Agents & Skills
 
 A curated collection of custom agents, skills, and reference documentation for Claude, Copilot or any AI-assisted software engineering.
 
