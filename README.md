@@ -39,10 +39,10 @@ cp agents/go-staff-engineer.md ~/.copilot/agents/
 
 ### Use in a specific project
 
-To scope assets to a single project, copy them into the project's `.claude/` directory instead:
+To scope assets to a single project, copy them into the project's `.copilot/` directory instead:
 
 ```bash
-cp -r skills/write-tests/ /path/to/project/.claude/skills/write-tests/
+cp -r skills/write-tests/ /path/to/project/.copilot/skills/write-tests/
 ```
 
 ---
@@ -62,7 +62,7 @@ agents-skills/
 
 Agents are specialized personas that Claude Code can adopt for specific types of work. Each agent has defined expertise, tools access, and behavioral guidelines.
 
-Place agent files in `~/.claude/agents/` to make them available globally.
+Place agent files in `~/.copilot/agents/` to make them available globally.
 
 | Agent | Purpose |
 |---|---|
@@ -85,7 +85,7 @@ Place agent files in `~/.claude/agents/` to make them available globally.
 
 Skills are structured prompts that guide Claude Code through specific workflows. Each skill lives in its own directory with a `SKILL.md` file and optional `references/` for supporting material.
 
-Place skill directories in `~/.claude/skills/` to make them available as slash commands.
+Place skill directories in `~/.copilot/skills/` to make them available as slash commands.
 
 ### Code Review & Quality
 
@@ -168,7 +168,7 @@ Place skill directories in `~/.claude/skills/` to make them available as slash c
 
 ## Docs
 
-Reference documentation that provides Claude Code with domain-specific knowledge. Place in `~/.claude/docs/` to make available globally.
+Reference documentation that provides Claude Code with domain-specific knowledge. Place in `~/.copilot/docs/` to make available globally.
 
 ### General
 
