@@ -1,6 +1,6 @@
 # Claude Code Agents & Skills
 
-A curated collection of custom agents, skills, and reference documentation for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — Anthropic's CLI tool for AI-assisted software engineering.
+A curated collection of custom agents, skills, and reference documentation for Claude, Copilot or any AI-assisted software engineering.
 
 This repository captures reusable prompt engineering assets that extend Claude Code with specialized capabilities: structured code reviews, architecture analysis, test generation, debugging workflows, and more.
 
@@ -8,7 +8,7 @@ This repository captures reusable prompt engineering assets that extend Claude C
 
 ### Install everything
 
-Copy the directories into your Claude Code configuration:
+Copy the directories into your agentic configuration:
 
 ```bash
 # Clone the repo
@@ -16,13 +16,13 @@ git clone <repo-url> agents-skills
 cd agents-skills
 
 # Copy agents (available globally across all projects)
-cp -r agents/ ~/.claude/agents/
+cp -r agents/ ~/.copilot/agents/
 
 # Copy skills (available globally across all projects)
-cp -r skills/ ~/.claude/skills/
+cp -r skills/ ~/.copilot/skills/
 
 # Copy reference docs
-cp -r docs/ ~/.claude/docs/
+cp -r docs/ ~/.copilot/docs/
 ```
 
 ### Install selectively
@@ -31,10 +31,10 @@ Pick only what you need:
 
 ```bash
 # Just the code review skill
-cp -r skills/code-review-skill/ ~/.claude/skills/code-review-skill/
+cp -r skills/code-review-skill/ ~/.copilot/skills/code-review-skill/
 
 # Just the Go agent
-cp agents/go-staff-engineer.md ~/.claude/agents/
+cp agents/go-staff-engineer.md ~/.copilot/agents/
 ```
 
 ### Use in a specific project
