@@ -1,0 +1,21 @@
+{
+  "name": "core-web-vitals",
+  "version": "1.0.0",
+  "description": "Core Web Vitals (LCP, INP, CLS) measurement skill for Playwright — pairs with playwright-dev skill",
+  "main": "lib/cwv-collector.js",
+  "scripts": {
+    "setup": "echo 'No install needed. This skill uses the web-vitals library from CDN at runtime.' && echo 'Ensure playwright-dev skill is set up: cd $PW_SKILL_DIR && npm run setup'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "core-web-vitals",
+    "lcp",
+    "inp",
+    "cls",
+    "playwright",
+    "performance",
+    "web-vitals"
+  ]
+}
