@@ -52,7 +52,7 @@ cp -r skills/write-tests/ /path/to/project/.copilot/skills/write-tests/
 ```
 agents-skills/
 ├── agents/          # 12 specialized agent definitions
-├── skills/          # 32 skill packages (slash commands)
+├── skills/          # 34 skill packages (slash commands)
 └── docs/            # Reference documentation (Go, JS, OTEL, general)
 ```
 
@@ -145,6 +145,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | Skill | Description |
 |---|---|
 | `troubleshooting` | Generate codebase-aware troubleshooting documentation with diagnostic procedures, error references, and recovery steps |
+| `go-logging` | Audit and improve Go service logging for Splunk/Datadog — ensures structured logs with TraceID, SpanID, timing, and request details |
 | `otel-trace-analysis` | Analyze OpenTelemetry traces for latency issues, error diagnosis, retry patterns, and dependency bottlenecks |
 | `backstage` | Create or update catalog-info.yaml files for Backstage developer portal onboarding |
 
@@ -153,6 +154,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | Skill | Description |
 |---|---|
 | `playwright-dev` | Write and execute Playwright browser checks and API checks with auto-detection and universal executor |
+| `core-web-vitals` | Measure and assert Core Web Vitals (LCP, INP, CLS) in Playwright scripts with HTML/Markdown reporting |
 | `evinced-web-sdk` | Add accessibility scanning to Playwright checks via Evinced SDK for WCAG compliance |
 
 ### Utilities
