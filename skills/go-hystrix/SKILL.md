@@ -68,3 +68,100 @@ Build the **Command Inventory Table**:
 - Categorize each dependency: external API, cache (Redis), database, internal service, etc.
 
 Output: A **command map** linking each command to its configuration, execution site, and protected dependency. This map is the foundation for all 7 dimension audits.
+
+### 6. Audit Dimensions
+
+For each dimension (1-7), read the corresponding reference file under `references/`, then run its checklist against the command map and source code. For each finding:
+
+- Classify severity: **Critical** (misconfigured/ineffective), **Warning** (suboptimal but functional), **Info** (style/consistency)
+- Tag as **Quick Win** (include before/after code) or **Recommendation** (describe the issue, note effort as S/M/L)
+
+**Dimension order:**
+1. **Configuration Tuning** — read `references/configuration-tuning.md`
+2. **Error Handling** — read `references/error-handling.md`
+3. **Code Patterns** — read `references/code-patterns.md`
+4. **Observability** — read `references/observability.md`
+5. **Naming Conventions** — read `references/naming-conventions.md`
+6. **Testing** — read `references/testing-patterns.md`
+7. **Fallback Patterns** — read `references/fallback-patterns.md`
+
+### 7. Generate Report
+
+Produce the audit report in this format. For dimensions with no findings, include the heading with "No issues found."
+
+~~~markdown
+# Hystrix Audit Report: {service-name}
+
+## Executive Summary
+- **Commands audited:** {count}
+- **Dependencies protected:** {list}
+- **Overall health:** {Critical: N | Warning: N | Info: N}
+
+### Quick Wins (ready to apply)
+| # | Finding | Dimension | Severity | File:Line |
+|---|---------|-----------|----------|-----------|
+| 1 | ... | ... | ... | ... |
+
+### Recommendations (team decision needed)
+| # | Finding | Dimension | Severity | Effort |
+|---|---------|-----------|----------|--------|
+| 1 | ... | ... | ... | S/M/L |
+
+---
+
+## Command Inventory
+| Command | Timeout | MaxConcurrent | ErrorThreshold | Protected Dependency | File:Line |
+|---------|---------|---------------|----------------|---------------------|-----------|
+
+---
+
+## Dimension 1: Configuration Tuning
+### Findings
+{findings with severity badges}
+### Quick Win Code
+{before/after diffs for fixable items}
+
+## Dimension 2: Error Handling
+### Findings
+{error filtering analysis, swallowed errors}
+### Quick Win Code
+{fixes where applicable}
+
+## Dimension 3: Code Patterns
+### Findings
+{deviations from standard boilerplate}
+### Quick Win Code
+{normalization diffs}
+
+## Dimension 4: Observability
+### Findings
+{metrics integration, stream handler, alerting gaps}
+### Quick Win Code
+{missing metrics registration, etc.}
+
+## Dimension 5: Naming Conventions
+### Findings
+{inconsistent or non-traceable names}
+### Quick Win Code
+{renames where safe}
+
+## Dimension 6: Testing
+### Findings
+{missing circuit breaker test coverage}
+### Recommendations
+{test patterns to add}
+
+## Dimension 7: Fallback Patterns
+### Findings
+{flag missing fallbacks — no prescriptive fixes, defer to team}
+~~~
+
+**Severity definitions:**
+- **Critical** — circuit breaker is misconfigured or ineffective (e.g., timeout higher than upstream timeout, circuit never trips)
+- **Warning** — suboptimal but functional (e.g., uniform concurrency not tuned per dependency, missing sleep window config)
+- **Info** — style/consistency issues (e.g., naming inconsistency, boilerplate deviation)
+
+**Effort sizing for recommendations:**
+- **S** — isolated change, single file
+- **M** — multi-file change, requires testing
+- **L** — architectural change, requires team alignment
