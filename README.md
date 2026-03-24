@@ -52,7 +52,7 @@ cp -r skills/write-tests/ /path/to/project/.copilot/skills/write-tests/
 ```
 agents-skills/
 ├── agents/          # 12 specialized agent definitions
-├── skills/          # 34 skill packages (slash commands)
+├── skills/          # 35 skill packages (slash commands)
 └── docs/            # Reference documentation (Go, JS, OTEL, general)
 ```
 
@@ -145,6 +145,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | Skill | Description |
 |---|---|
 | `troubleshooting` | Generate codebase-aware troubleshooting documentation with diagnostic procedures, error references, and recovery steps |
+| `go-hystrix` | Audit and optimize Hystrix circuit breaker implementations across 7 dimensions — configuration, error handling, code patterns, observability, naming, testing, and fallback patterns |
 | `go-logging` | Audit and improve Go service logging for Splunk/Datadog — ensures structured logs with TraceID, SpanID, timing, and request details |
 | `otel-trace-analysis` | Analyze OpenTelemetry traces for latency issues, error diagnosis, retry patterns, and dependency bottlenecks |
 | `backstage` | Create or update catalog-info.yaml files for Backstage developer portal onboarding |
