@@ -51,8 +51,8 @@ cp -r skills/write-tests/ /path/to/project/.copilot/skills/write-tests/
 
 ```
 agents-skills/
-├── agents/          # 12 specialized agent definitions
-├── skills/          # 35 skill packages (slash commands)
+├── agents/          # 13 specialized agent definitions
+├── skills/          # 40 skill packages (slash commands)
 └── docs/            # Reference documentation (Go, JS, OTEL, general)
 ```
 
@@ -77,6 +77,7 @@ Place agent files in `~/.copilot/agents/` to make them available globally.
 | `runbook-writer` | Operational runbooks for production systems and incident response |
 | `security-auditer` | Comprehensive security audits with vulnerability identification and remediation |
 | `sonarqube-code-quality` | Code quality analysis aligned with SonarQube rules and metrics |
+| `staff-react-engineer` | Expert React/JS/TS development — MFE architecture, Redux/state management, performance, and production-ready implementations |
 | `vibe-coding-coach` | Build apps through conversation — translate ideas and vibes into working code |
 
 ---
@@ -94,6 +95,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | `code-review-skill` | PR-focused code review with structured checklist, severity ratings, and actionable feedback |
 | `code-review` | Whole-repository code quality review covering architecture, security, performance, and testing |
 | `find-missing-tests` | Review code and produce a prioritized list of missing test cases formatted as GitHub issues |
+| `pr-evidence` | Write a focused test in JavaScript or Go that confirms or refutes a code review finding — separates real issues from over-engineering hyperbole |
 
 ### Testing
 
@@ -102,6 +104,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | `write-tests` | Generate comprehensive tests including unit, integration, and edge case coverage with framework-aware conventions |
 | `test-coverage` | Analyze test coverage, identify gaps in critical code paths, and produce a prioritized coverage improvement plan |
 | `e2e-setup` | Set up end-to-end testing infrastructure with Playwright, including page objects, CI integration, and test data management |
+| `automation-rubric` | Audit an existing test suite for quality and coverage gaps, score automation against a world-class standard, and evaluate Playwright migration readiness (Selenium, WebdriverIO, Playwright) |
 
 ### Architecture & Documentation
 
@@ -120,6 +123,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 |---|---|
 | `security-audit` | Identify security vulnerabilities across dependencies, auth, input validation, data protection, secrets, and infrastructure |
 | `security-hardening` | Apply security best practices to reduce attack surface — authentication, input validation, headers, encryption, and dependency updates |
+| `dependency-security-audit` | Triage Dependabot alerts, npm audit findings, and govulncheck output — per-CVE risk scoring, short-term patches, long-term remediation plan (JS/Node.js and Go) |
 
 ### Performance & Health
 
@@ -139,6 +143,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | `clean-branch` | Safely clean up merged, stale, and unnecessary git branches with dry-run preview |
 | `migration-guide` | Create step-by-step migration guides for upgrading dependencies, frameworks, or architectural changes |
 | `estimate-assistant` | Provide data-driven task estimates using git history, code complexity analysis, and similar past work |
+| `interactive-estimate` | Produce delivery estimates by analyzing historical JIRA tickets, git activity, and engineer track records — includes team assignment and sprint planning recommendations |
 
 ### Operations & Observability
 
@@ -148,6 +153,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | `go-hystrix` | Audit and optimize Hystrix circuit breaker implementations across 7 dimensions — configuration, error handling, code patterns, observability, naming, testing, and fallback patterns |
 | `go-logging` | Audit and improve Go service logging for Splunk/Datadog — ensures structured logs with TraceID, SpanID, timing, and request details |
 | `otel-trace-analysis` | Analyze OpenTelemetry traces for latency issues, error diagnosis, retry patterns, and dependency bottlenecks |
+| `grafana` | AI-powered observability with Grafana MCP — translates natural language to metrics, logs, and trace queries to diagnose issues like a senior SRE |
 | `backstage` | Create or update catalog-info.yaml files for Backstage developer portal onboarding |
 
 ### Browser & Accessibility Testing
