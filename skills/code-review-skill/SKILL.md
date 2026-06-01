@@ -64,6 +64,27 @@ Evaluate the changeset against:
 - Review error handling — are errors caught, logged, and handled appropriately?
 - Verify consistent coding style and naming conventions with the rest of the codebase.
 
+**Caller Invariant Check (mandatory before flagging data-flow bugs)**
+
+When a potential bug depends on a specific input state — a missing field, a nil value, a stale variable, a function returning the original instead of a filtered copy — trace the callers before reporting it as a finding:
+
+- How is each parameter constructed at the call sites?
+- What invariants does the caller enforce on those parameters that the callee can rely on?
+- Can the problematic state actually arise from those call sites, or does it require violating a caller-enforced constraint?
+
+A function that behaves incorrectly only when given inputs its callers structurally prevent is **not a confirmed bug** — it is a fragility. Report it as Medium at most, label it explicitly as a fragility rather than a bug, and note the specific invariant the code relies on. Do not flag a callee's behavior as a bug based on inputs you constructed. Trace whether those inputs can arrive.
+
+**The Surface Pattern Trap**
+
+Certain code patterns look wrong in isolation but are correct given caller guarantees. Common examples:
+
+- Returning the original/unfiltered value after a filtered copy was already built
+- Using a fallback to an "old" value when a new value is absent
+- An early return that appears to skip work already done
+- A variable captured "too early" relative to a later mutation
+
+Treat these as **candidate observations**, not findings. They require a caller invariant check before being elevated. An observation becomes a finding only when you can show the problematic behavior is reachable from actual production call paths.
+
 ### 6. Security Review
 
 - Check for common vulnerabilities: SQL injection, XSS, command injection, path traversal (OWASP guidelines).
@@ -99,9 +120,9 @@ A 2-3 sentence summary of what the changeset does and overall assessment.
 
 Organize by severity:
 
-**CRITICAL** — Must fix before merge (security issues, secrets exposure, data loss risk, breaking bugs)
+**CRITICAL** — Must fix before merge (security issues, secrets exposure, data loss risk, breaking bugs). **Reachability required:** you must be able to trace a realistic production path that triggers the behavior. If reachability is unverified, the finding cannot be Critical.
 
-**HIGH** — Should fix before merge (significant bugs, missing error handling, failing tests)
+**HIGH** — Should fix before merge (significant bugs, missing error handling, failing tests). **Reachability required:** same as Critical. If the scenario requires inputs that callers structurally prevent, cap at Medium and label as fragility, not bug.
 
 **MEDIUM** — Recommended improvements (code quality, missing tests, design issues)
 
@@ -136,3 +157,5 @@ One of:
 - **Be educational.** Explain the *why* behind suggestions. A review that teaches is worth more than one that just corrects.
 - **Acknowledge trade-offs.** When the author made a reasonable choice among valid options, say so.
 - **Be constructive.** Every piece of criticism should come with a path forward.
+- **Distinguish observation from finding.** An observation is "I see a pattern that is a known risk." A finding is "I have verified this pattern is reachable under realistic conditions and the behavior is incorrect." Only findings belong in the findings section with a severity label. Observations that fail the caller invariant check belong in a separate note, worded as a question: "Is there a guarantee that X is always non-nil here? If not, this path could be fragile — worth documenting the invariant."
+- **Treat author pushback as a prompt to re-examine, not to defend.** When a developer challenges a finding, the correct response is to trace the call chain and verify reachability — not to restate the original reasoning. A finding that cannot survive the author's context does not deserve its severity label.

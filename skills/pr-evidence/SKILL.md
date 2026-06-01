@@ -25,8 +25,9 @@ Before evaluating any finding, verify every assumption the reviewer made about l
 - If the finding references a third-party library: **read the source** (`node_modules/<pkg>/src/` or the built file). Do not assume what a prop, method, or config key does.
 - If the finding claims a runtime behavior (type coercion, NaN propagation, operator precedence): **write a minimal proof** before assuming it's correct.
 - If the finding references a CMS, API contract, or external system: **trace the actual call path** in the codebase before concluding the integration breaks.
+- If the finding claims a function returns incorrect data, mishandles a parameter, or fails to filter/remove something: **trace how the function's parameters are constructed by its actual callers** before evaluating the finding. Ask: what invariants do the callers enforce on those inputs? Can the problematic state actually arrive? A function that misbehaves only on inputs its callers structurally prevent is a fragility, not a confirmed bug.
 
-> Skipping this step caused two Critical findings in a real review to be completely wrong (a library `contentId` assumed to be a CMS key was actually an ARIA `id`; a subtraction assumed to produce `NaN` was actually coerced by the JS `-` operator).
+> Skipping this step caused two Critical findings in a real review to be completely wrong (a library `contentId` assumed to be a CMS key was actually an ARIA `id`; a subtraction assumed to produce `NaN` was actually coerced by the JS `-` operator). A third finding was falsely confirmed as Critical because the confirming test used inputs the calling code structurally prevents — the function was only "broken" for states the system cannot produce.
 
 ---
 
@@ -193,6 +194,20 @@ func (s *stubUserStore) Get(id string) (*User, error) { return s.user, nil }
 
 ---
 
+## Step 4b — Input Reachability Check (mandatory for confirming tests)
+
+Before running any confirming test — one designed to prove a bug exists — answer:
+
+1. What code constructs the parameters passed to the function under test?
+2. Can that code produce the input state your test uses?
+3. Or does your test require constructing inputs that callers structurally prevent?
+
+If the confirming state requires violating a caller-enforced invariant, **do not declare CONFIRMED.** The finding is a fragility: the code behaves incorrectly for inputs it should never receive. Adjust the verdict to NUANCED, cap severity at Medium, and document the invariant being relied on.
+
+A test that proves a bug using unreachable inputs is not evidence of a production bug — it is evidence of a code smell worth noting at lower severity.
+
+---
+
 ## Step 5 — Run the Test (MANDATORY)
 
 **Do not report results without running the test.** Execute using the project's test runner:
@@ -267,6 +282,7 @@ For each REFUTED or NUANCED finding:
 - [ ] Step 2 completed: hyperbole check answered (Q1–Q4) for every finding
 - [ ] Step 3 completed: over-engineering check run on every recommended fix
 - [ ] Step 4 completed: every finding has a falsifiable test (can fail either way)
+- [ ] Step 4b completed: for all confirming tests, inputs verified as reachable from actual production call paths
 - [ ] Step 5 completed: every test was executed and output observed
 - [ ] Step 6 completed: Evidence Report produced with all findings in the summary table
 
