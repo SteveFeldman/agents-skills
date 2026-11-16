@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Summarizes a Stryker mutation.json report into stable findings, per-test credit,
 // and (optionally) a per-mutant delta against a second report.
-// Read-only: reads the given JSON files only; no child processes, no network, no writes.
+// Read-only: reads the given JSON files; with --origin-ref it also runs `git show <ref>:<file>`.
+// No network, no writes.
 //
 // Usage:
 //   node summarize-mutants.mjs --report <mutation.json> [--compare <other.json>]
-//        [--credit <test-path-substring>]... [--format md|json]
+//        [--credit <test-path-substring>]... [--findings <mutation-findings.json>]
+//        [--origin-ref <base-ref>] [--format md|json]
 //
 //   --report   Report to summarize (e.g. PR tests against PR source).
 //   --compare  Earlier report for the SAME source revision and mutate ranges
@@ -13,8 +15,16 @@
 //              Deltas: newly-killed, still-surviving, no-longer-killed.
 //   --credit   Only credit kills from test files whose path contains this string
 //              (repeatable; e.g. the test files changed in the PR).
+//   --findings Triaged findings file. Mutants classified equivalent/defensive/cosmetic
+//              (matched by id) are excluded from the per-file "actionable" score.
+//   --origin-ref  Base ref (e.g. the merge-base). Tags each unkilled mutant "new" or
+//              "pre-existing": pre-existing means the mutated line(s) already existed in the
+//              base file and were only reformatted/moved by the diff. Heuristic: compares
+//              whole lines with whitespace, quote style, commas and semicolons ignored.
+//              Run from the repo checkout (needs git).
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const one = (name) => {
@@ -26,10 +36,34 @@ const many = (name) => args.flatMap((a, i) => (a === name && args[i + 1] ? [args
 const reportPath = one('--report');
 const comparePath = one('--compare');
 const credit = many('--credit');
+const findingsPath = one('--findings');
+const originRef = one('--origin-ref');
 const format = one('--format') || 'md';
 if (!reportPath || !['md', 'json'].includes(format)) {
-  console.error('Usage: summarize-mutants.mjs --report <mutation.json> [--compare <old.json>] [--credit <path>]... [--format md|json]');
+  console.error('Usage: summarize-mutants.mjs --report <mutation.json> [--compare <old.json>] [--credit <path>]... [--findings <json>] [--origin-ref <ref>] [--format md|json]');
   process.exit(2);
+}
+if (originRef && !/^[\w./~^@-]+$/.test(originRef)) {
+  console.error(`Refusing suspicious ref: ${originRef}`);
+  process.exit(2);
+}
+const NOT_ACTIONABLE = new Set(['equivalent', 'defensive', 'cosmetic']);
+const classOf = new Map(
+  findingsPath ? JSON.parse(readFileSync(findingsPath, 'utf8')).findings.map((f) => [f.id, f.classification]) : [],
+);
+const norm = (t) => t.replace(/\s+/g, '').replace(/"/g, "'").replace(/[,;]/g, '');
+const baseCache = new Map();
+function baseText(file) {
+  if (!baseCache.has(file)) {
+    let text = null;
+    try {
+      text = norm(execFileSync('git', ['show', `${originRef}:${file}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 32 * 1024 * 1024 }));
+    } catch {
+      text = null; // file added by the PR
+    }
+    baseCache.set(file, text);
+  }
+  return baseCache.get(file);
 }
 
 const UNKILLED = new Set(['Survived', 'NoCoverage']);
@@ -48,6 +82,8 @@ function load(path) {
     const lines = (f.source || '').split('\n');
     for (const m of f.mutants || []) {
       const { start, end } = m.location;
+      // Whole lines spanned by the mutant (fragments like `true` match anywhere in a file).
+      const snippet = lines.slice(start.line - 1, end.line).join('\n');
       // Stable across reruns of the same source: file + position + mutator + replacement.
       const key = `${file}:${start.line}:${start.column}-${end.line}:${end.column}|${m.mutatorName}|${m.replacement ?? ''}`;
       const id = `MT-${createHash('sha256').update(key).digest('hex').slice(0, 10)}`;
@@ -62,6 +98,7 @@ function load(path) {
         status: m.status,
         killedBy: (m.killedBy || []).map((t) => tests.get(t)).filter(Boolean),
         coveredByCount: (m.coveredBy || []).length,
+        snippet,
       });
     }
   }
@@ -79,11 +116,26 @@ const all = [...cur.mutants.values()].sort((a, b) => a.file.localeCompare(b.file
 
 const byFile = {};
 for (const m of all) (byFile[m.file] ||= []).push(m);
-const files = Object.entries(byFile).map(([file, ms]) => ({ file, ...score(ms) }));
+const actionable = (ms) => ms.filter((m) => !(UNKILLED.has(m.status) && NOT_ACTIONABLE.has(classOf.get(m.id))));
+const files = Object.entries(byFile).map(([file, ms]) => ({
+  file,
+  ...score(ms),
+  ...(findingsPath ? { actionable: score(actionable(ms)) } : {}),
+}));
 
+const originOf = (m) => {
+  if (!originRef) return undefined;
+  const base = baseText(m.file);
+  return base && base.includes(norm(m.snippet)) ? 'pre-existing' : 'new';
+};
 const findings = all
   .filter((m) => UNKILLED.has(m.status))
-  .map(({ killedBy, ...m }) => ({ ...m, classification: 'untriaged', state: 'open' }));
+  .map(({ killedBy, snippet, ...m }) => ({
+    ...m,
+    ...(originRef ? { origin: originOf({ ...m, snippet }) } : {}),
+    classification: classOf.get(m.id) || 'untriaged',
+    state: 'open',
+  }));
 
 // Credit: which tests killed mutants (optionally only PR-changed test files).
 const creditMap = new Map();
@@ -113,7 +165,17 @@ if (comparePath) {
   delta.compareScore = score([...old.mutants.values()]);
 }
 
-const out = { report: reportPath, compare: comparePath || null, overall: score(all), files, findings, credits, delta };
+const out = {
+  report: reportPath,
+  compare: comparePath || null,
+  originRef: originRef || null,
+  overall: score(all),
+  ...(findingsPath ? { overallActionable: score(actionable(all)) } : {}),
+  files,
+  findings,
+  credits,
+  delta,
+};
 
 if (format === 'json') {
   console.log(JSON.stringify(out, null, 2));
@@ -122,12 +184,18 @@ if (format === 'json') {
 
 const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/`/g, "'");
 const o = out.overall;
-console.log(`## Mutation summary\n\nOverall: ${o.score}% (${o.killed} killed+timeout / ${o.killed + o.unkilled}; ${o.total} mutants incl. errors/ignored)\n`);
-console.log('| File | Mutants | Killed | Survived/NoCov | Score |\n|---|---|---|---|---|');
-for (const f of files) console.log(`| ${f.file} | ${f.total} | ${f.killed} | ${f.unkilled} | ${f.score ?? 'n/a'}% |`);
-console.log(`\n## Findings (${findings.length} unkilled)\n\n| ID | Location | Mutator | Status | Original | Replacement |\n|---|---|---|---|---|---|`);
+const oa = out.overallActionable;
+const pct = (x) => (x.score === null ? 'n/a' : `${x.score}%`);
+console.log(`## Mutation summary\n\nOverall: ${o.score}% (${o.killed} killed+timeout / ${o.killed + o.unkilled}; ${o.total} mutants incl. errors/ignored)`);
+if (oa) console.log(`Actionable: ${pct(oa)} (${oa.killed}/${oa.killed + oa.unkilled}; excludes equivalent/defensive/cosmetic)`);
+console.log(`\n| File | Mutants | Killed | Survived/NoCov | Score |${oa ? ' Actionable |' : ''}\n|---|---|---|---|---|${oa ? '---|' : ''}`);
+for (const f of files) {
+  const a = f.actionable ? ` ${pct(f.actionable)} (${f.actionable.killed}/${f.actionable.killed + f.actionable.unkilled}) |` : '';
+  console.log(`| ${f.file} | ${f.total} | ${f.killed} | ${f.unkilled} | ${pct(f)} |${a}`);
+}
+console.log(`\n## Findings (${findings.length} unkilled)\n\n| ID | Location | Mutator | Status |${originRef ? ' Origin |' : ''} Class | Original | Replacement |\n|---|---|---|---|${originRef ? '---|' : ''}---|---|---|`);
 for (const f of findings) {
-  console.log(`| ${f.id} | ${f.file}:${f.line} | ${f.mutator} | ${f.status} | \`${esc(f.original)}\` | \`${esc(f.replacement)}\` |`);
+  console.log(`| ${f.id} | ${f.file}:${f.line} | ${f.mutator} | ${f.status} |${originRef ? ` ${f.origin} |` : ''} ${f.classification} | \`${esc(f.original)}\` | \`${esc(f.replacement)}\` |`);
 }
 console.log(`\n## Test credit${credit.length ? ` (${credit.join(', ')})` : ''}\n`);
 for (const c of credits.slice(0, 20)) console.log(`- ${c.file}:${c.line} "${c.test}" killed ${c.kills.length}: ${[...new Set(c.kills)].join(', ')}`);
