@@ -103,7 +103,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 |---|---|
 | `write-tests` | Generate comprehensive tests including unit, integration, and edge case coverage with framework-aware conventions |
 | `test-coverage` | Analyze test coverage, identify gaps in critical code paths, and produce a prioritized coverage improvement plan |
-| `mutation-testing` | StrykerJS mutation testing for JS/TS: PR-diff-scoped runs, survivor triage, and targeted test proposals |
+| `mutation-testing` | StrykerJS mutation testing for JS/TS: PR-diff-scoped runs, survivor triage, test credit, base-vs-PR comparison, and a verify-and-rerun PR feedback loop |
 | `e2e-setup` | Set up end-to-end testing infrastructure with Playwright, including page objects, CI integration, and test data management |
 | `automation-rubric` | Audit an existing test suite for quality and coverage gaps, score automation against a world-class standard, and evaluate Playwright migration readiness (Selenium, WebdriverIO, Playwright) |
 

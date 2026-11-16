@@ -1,6 +1,6 @@
 ---
 name: mutation-testing
-description: "Run StrykerJS mutation testing on JavaScript/TypeScript code (Jest, Vitest, Mocha) to find weak or missing assertions. Scopes runs to a PR's changed lines, triages survivors, and proposes targeted tests. Use when asked to 'run mutation testing', 'check test quality', 'find weak tests', or 'evaluate tests for PR #N'."
+description: "Run StrykerJS mutation testing on JavaScript/TypeScript code (Jest, Vitest, Mocha) to find weak or missing assertions. Scopes runs to a PR's changed lines, triages survivors, credits effective tests, compares base vs PR tests, and produces trackable findings plus a draft PR comment for a verify-and-rerun feedback loop with human or agent authors. Use when asked to 'run mutation testing', 'check test quality', 'find weak tests', 'evaluate tests for PR #N', or 'give feedback on a PR's tests'."
 ---
 
 # Mutation Testing with Stryker (JS/TS)
@@ -18,6 +18,13 @@ Scope here: **StrykerJS only**. Other languages (mutmut, PIT, etc.) are out of s
 5. **Do not modify tracked files** (`package.json`, lockfile, source, tests) unless the user asks. Run from a throwaway config; tests you propose go in a patch/diff for approval.
 6. **Report only what ran.** No mutation score without a denominator; never extrapolate to "all bugs".
 7. Mutating tracked source happens inside Stryker's `.stryker-tmp/` sandbox copy, never in the working tree. If a run is killed, delete `.stryker-tmp/` (leftovers get picked up by Jest and fail with JSX parse errors).
+8. **Never post to GitHub** (PR comments, reviews, statuses) without explicit approval of the exact text. Edit the existing skill comment instead of adding new ones. Never commit or push.
+9. **Never call a survivor a bug.** It is a test-strength observation; phrase feedback as questions.
+
+## Modes
+
+- **Score / gap-finding** (default): steps 1–8 below.
+- **PR test feedback**: "how good are this PR's tests?" Follow steps 1–8 in an isolated workspace, add the base-vs-PR comparison, then produce findings and the feedback loop in `references/pr-feedback.md`. Worked example: `references/pr-feedback-example-2285.md`.
 
 ## Workflow
 
@@ -34,12 +41,17 @@ Whole-repo runs take hours. Choose one:
 - Check Babel/Flow: if the project uses a Babel 7 config with `@babel/preset-flow` (or other Babel‑7‑only presets), **use Stryker 9.x** (see Gotchas). Otherwise use the latest 10.x (Node ≥ 22).
 - Check git state; note untracked files that already exist so you leave them alone.
 
-### 3. Install transiently
+### 3. Install in an isolated workspace (preferred)
 ```bash
-npm i --no-save --ignore-scripts --no-audit --no-fund \
+WS=$(mktemp -d /tmp/mut-XXXX)
+git archive <sha> | tar -x -C "$WS"   # exact commit, no .git, user checkout untouched
+cp -cR node_modules "$WS/"            # APFS clone (fast); plain `cp -R` on Linux
+cd "$WS" && env -u NODE_TLS_REJECT_UNAUTHORIZED npm i --no-save --ignore-scripts --no-audit --no-fund \
   @stryker-mutator/core@<ver> @stryker-mutator/<runner>@<ver>
 ```
-`--no-save` still prunes/changes `node_modules` entries. After the run, restore with `npm install --ignore-scripts` and then `git checkout -- package-lock.json` (npm may rewrite it). Or install in a scratch worktree.
+- `npm i --no-save` in the real checkout still prunes/changes `node_modules` and can rewrite the lockfile. Only do it there if the user asks; then restore with `npm install --ignore-scripts` and `git checkout -- package-lock.json`.
+- `env -u NODE_TLS_REJECT_UNAUTHORIZED` keeps TLS verification on for the install if the shell disables it. Don't change npm config.
+- Compute ranges (step 1) in the real checkout; the archive has no `.git`.
 
 ### 4. Config
 Copy `references/stryker.config.template.json` to an **untracked** `stryker.<name>.config.json` in the repo root (delete when done). Adjust `testRunner`/`jest.configFile`. Config path is a **positional argument** (`stryker run my.config.json`), not `-c`; with a wrong flag Stryker silently falls back to the `command` runner and runs the full suite.
@@ -55,11 +67,17 @@ npx stryker run <config> --concurrency 4 --mutate "<comma,separated,ranges>" > /
 - Run long jobs in the background / with generous timeouts (63 mutants ≈ 3 min on 4 workers).
 
 ### 6. Triage every survivor and no-coverage mutant
-Parse `reports/mutation/mutation.json` (statuses `Survived`, `NoCoverage`) and show original line + replacement. Classify each:
+Summarize with the read-only helper. It prints per-file scores, unkilled mutants with stable `MT-` IDs, and which tests killed what:
+```bash
+node <skill-dir>/scripts/summarize-mutants.mjs --report reports/mutation/mutation.json \
+  [--credit <pr-test-file>]... [--compare <earlier.json>] [--format json]
+```
+Before recommending anything, check **reachability** (can callers produce that input? a normalizer upstream makes it `defensive`), **equivalence**, and whether the covering test **mocks** the module. Classify each:
 
 | Class | Meaning | Action |
 |---|---|---|
 | **Real gap** | Behavior a user/caller would notice (guard, default value, boundary, conditional branch) | Propose a focused test |
+| **Defensive** | Guard for input that callers structurally prevent (e.g. `?.` after a normalizer that guarantees `entries ?? []`) | Note only; don't request a test |
 | **Equivalent** | Mutant behaves identically (e.g. `|| ''` fed into a digits-only filter; `<=` vs `<` when equal values return the same result) | Document; optionally `// Stryker disable next-line <Mutator>: <reason>` with approval |
 | **Cosmetic** | Class-name template strings, log text, error copy | Usually ignore; exclude via `mutator.excludedMutations` only with approval |
 | **Test-infra** | Timeout/compile errors, no covering tests because file is excluded | Fix config or note as inconclusive |
@@ -69,11 +87,19 @@ Prioritize: guards for missing/empty data (`?.`, `?? []`, `|| []`), boolean cond
 ### 7. Propose and verify tests
 - Write tests that fail for the mutated behavior (assert the exact outcome, not "defined").
 - Use the project's existing test files, helpers and style. Add parameterized cases (`test.each`) where several mutants share a setup.
-- Rerun Stryker **only on the affected ranges** and report before/after. Real fixes should push those files to 100% unless equivalents remain.
-- Present tests as a diff/patch; apply only with approval. Never delete existing tests based on mutation results alone.
+- Apply them in the isolated workspace only. Rerun Stryker **only on the affected ranges**, then `summarize-mutants.mjs --report after.json --compare before.json` for before/after (`newlyKilled`, `noLongerKilled`). Real fixes should push those files to 100% unless equivalents remain.
+- At most 2 attempts per finding, then mark it `inconclusive`. A test that passes/fails inconsistently across 3 runs is flaky; don't count its kills.
+- Present tests as a diff/patch; apply to the user's checkout only with approval. Never delete existing tests based on mutation results alone.
+
+### 7b. PR test feedback (PR mode)
+See `references/pr-feedback.md` for details. In short:
+1. **Compare:** run A (base-branch versions of the PR's test files) and run B (PR tests), both on PR source with the same `--mutate` ranges. Report `newlyKilled` (credit the PR's tests by name), `stillSurviving`, and `noLongerKilled` (always raise). If run A can't execute, say "comparison inconclusive" and report B alone.
+2. **Findings:** write `mutation-findings.json` outside the repo. Each finding has a stable ID, class, state (`open` → `verified` | `inconclusive` | `wont-fix`), evidence, a question, a suggested test and a repro command. Only a rerun sets `verified`.
+3. **Loop:** on each new PR head (or agent patch), rerun the same ranges, update states, and stop when nothing actionable is `open`.
+4. **Comment:** show the draft locally (marker `<!-- mutation-testing-skill -->`). Post or edit only after approval, credit good tests first, and ask questions rather than make demands.
 
 ### 8. Cleanup (always)
-`rm -rf .stryker-tmp reports stryker.<name>.config.json`, restore `node_modules`/lockfile as above, confirm `git status` matches the pre-run state.
+`rm -rf "$WS"` (isolated workspace). If anything ran in the real checkout: `rm -rf .stryker-tmp reports stryker.<name>.config.json` and restore `node_modules`/lockfile. Confirm `git status` matches the pre-run state.
 
 ## Report format
 
@@ -87,6 +113,7 @@ Equivalent/ignored: list with reasons
 Verification: before/after score for affected files
 Caveats: sampled changed lines only; score is for mutants generated, not all possible bugs
 ```
+PR mode adds: comparison status (complete/inconclusive/not run), credit for effective tests, findings with IDs and states, and the draft comment (not posted).
 Targets (guidance, not gates): ≥80% for critical logic, ≥60% elsewhere. Don't chase 100%.
 
 ## Gotchas (verified on checkout-mfe, Jest 29 + Babel 7 + Flow)
@@ -98,10 +125,14 @@ Targets (guidance, not gates): ≥80% for critical logic, ≥60% elsewhere. Don'
 - Leftover `.stryker-tmp/sandbox-*` dirs break later `jest` runs. Remove them.
 - Rename/formatting-only diffs (quote style, import reordering) still generate mutants (`StringLiteral`); classify as cosmetic.
 - Tests using `jest.mock` of whole modules can make mutants in mocked modules show `NoCoverage`; verify the module is exercised by a real (unmocked) test before calling it a gap.
-- A restricted environment with `NODE_TLS_REJECT_UNAUTHORIZED=0` only prints warnings; do not "fix" it by editing npm config.
+- If the shell sets `NODE_TLS_REJECT_UNAUTHORIZED=0`, unset it for installs (`env -u NODE_TLS_REJECT_UNAUTHORIZED npm …`); don't edit npm config.
+- `MT-` IDs hash file + position + mutator + replacement. They are stable across reruns of the same source and change when the author edits that line. Re-anchor by file + mutator + nearby line.
 
 ## References
 - `references/stryker.config.template.json` – safe starter config (no dashboard, JSON + clear-text reporters).
 - `references/source-security-review.md` – review of the four third-party skills and what was adopted/rejected.
 - `references/evaluation-pr-2285.md` – effectiveness evaluation against `TotalWineLabs/checkout-mfe#2285`.
+- `references/pr-feedback.md` – base-vs-PR comparison, finding schema, feedback loop, PR comment template and posting rules.
+- `references/pr-feedback-example-2285.md` – worked PR-feedback output for `TotalWineLabs/checkout-mfe#2285`.
 - `scripts/diff-mutate-ranges.mjs` – read-only helper (only runs `git diff`; no network, no writes).
+- `scripts/summarize-mutants.mjs` – read-only helper (reads report JSON only): scores, stable finding IDs, test credit, report-to-report delta.
