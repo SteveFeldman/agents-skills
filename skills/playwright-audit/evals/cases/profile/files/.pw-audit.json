@@ -1,0 +1,7 @@
+{
+  "testIdAttribute": "data-qa",
+  "acceptedDeviations": ["PW302"],
+  "allowedCredentials": [
+    { "path": "^test-data/accounts\\.", "reason": "Shared persona logins on a non-production environment" }
+  ]
+}

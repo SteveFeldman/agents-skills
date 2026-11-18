@@ -1,0 +1,106 @@
+{
+  "instruction": "Configure Playwright so failures are visible, reproducible and cannot be silenced",
+  "relevant_when": "playwright.config.* is created or changed",
+  "context": "CI must reject committed .only, retry transient failures, and keep artifacts for diagnosis. Options such as webServer and storageState are valid only when the suite starts its own app or needs a shared login; they are judged against the project's profile, not required.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "forbid-only",
+      "rule": "forbidOnly is set, typically to !!process.env.CI",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW401"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/api/class-testconfig"
+      ]
+    },
+    {
+      "name": "ci-retries",
+      "rule": "retries is configured for CI and is not zero everywhere",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW402"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/test-retries",
+        "https://playwright.dev/docs/api/class-testconfig"
+      ]
+    },
+    {
+      "name": "diagnostic-artifacts",
+      "rule": "Debugging best practice: failure artifacts are all captured: trace is on-first-retry or retain-on-failure (not always on), screenshot is only-on-failure, and video is retain-on-failure",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW403",
+        "PW404",
+        "PW409"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/trace-viewer",
+        "https://playwright.dev/docs/api/class-testoptions",
+        "https://playwright.dev/docs/test-use-options"
+      ]
+    },
+    {
+      "name": "parallelism-intentional",
+      "rule": "fullyParallel is enabled, or the config explains why tests share state and must run serially",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW405",
+        "PW408"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/test-parallel",
+        "https://playwright.dev/docs/ci"
+      ]
+    },
+    {
+      "name": "base-url",
+      "rule": "baseURL is configured (literal or from an environment helper) so tests use relative paths",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW406"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/test-use-options"
+      ]
+    },
+    {
+      "name": "ci-reporter",
+      "rule": "A reporter that CI can consume (junit, html or json) is configured",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [
+        "PW407"
+      ],
+      "backing": "none",
+      "docs": [
+        "https://playwright.dev/docs/test-reporters"
+      ],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "app-startup-fits-environment",
+      "rule": "webServer is configured when tests run against a locally started app; deployed-environment suites state their target through baseURL and do not need it",
+      "relevant_when": "A Playwright config exists",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/test-webserver"
+      ]
+    }
+  ]
+}
