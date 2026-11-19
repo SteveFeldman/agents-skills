@@ -3,6 +3,24 @@
 const fs   = require('fs');
 const path = require('path');
 const { THRESHOLDS, RATING_ICONS } = require('./thresholds');
+const { LAB_DISCLAIMER, UNSPECIFIED_COPY } = require('./conditions');
+
+function _hasConditions(result) {
+  const c = result.conditions;
+  return Boolean(c) && c.preset !== 'unspecified';
+}
+
+function _conditionsText(result) {
+  const c = result.conditions;
+  if (!_hasConditions(result)) return UNSPECIFIED_COPY;
+  return c.method ? `Conditions: ${c.label} (${c.method} throttling)` : `Conditions: ${c.label}`;
+}
+
+/** The conditions line and the lab disclaimer directly below it. */
+function _conditionsLines(result) {
+  return [_conditionsText(result), LAB_DISCLAIMER];
+}
+
 
 /**
  * Print a formatted Core Web Vitals report to stdout.
@@ -17,6 +35,8 @@ function printReport(result) {
   console.log('  Core Web Vitals Report');
   console.log(`  URL:  ${result.url}`);
   console.log(`  Time: ${result.collectedAt}`);
+  for (const line of _conditionsLines(result)) console.log(`  ${line}`);
+  for (const w of result.warnings || []) console.log(`  ⚠️   Warning: ${w}`);
   console.log('══════════════════════════════════════════════');
 
   console.log('\n📊  Core Web Vitals  (Google ranking signals)');
@@ -106,9 +126,17 @@ function printComparison(results) {
   console.log('  Core Web Vitals — Multi-URL Comparison');
   console.log('══════════════════════════════════════════════');
 
-  for (const r of results) {
+  const labels = results.map((r) => (_hasConditions(r) ? _conditionsText(r) : UNSPECIFIED_COPY));
+  const shared = results.length > 0 && labels.every((l) => l === labels[0]);
+  if (shared) {
+    console.log(`  ${labels[0]}`);
+    console.log(`  ${LAB_DISCLAIMER}`);
+  }
+
+  for (const [i, r] of results.entries()) {
     const shortUrl = r.url.replace(/^https?:\/\//, '').slice(0, 60);
     console.log(`\n  🌐  ${shortUrl}`);
+    if (!shared) console.log(`     ${labels[i]}`);
     if (r.error) {
       console.log(`     ❌  Error: ${r.error}`);
       continue;
@@ -121,6 +149,7 @@ function printComparison(results) {
       }
     }
   }
+  if (!shared) console.log(`\n  ${LAB_DISCLAIMER}`);
   console.log('\n══════════════════════════════════════════════\n');
 }
 
@@ -264,6 +293,13 @@ function generateMarkdownReport(results, options = {}) {
     lines.push(`**URL:** ${r.url}`);
     lines.push(`**Collected:** ${r.collectedAt ?? now}`);
     lines.push('');
+    lines.push(..._conditionsLines(r).map((l) => `${l}  `));
+    lines.push('');
+    if (r.warnings && r.warnings.length) {
+      lines.push('**Warnings:**');
+      for (const w of r.warnings) lines.push(`- ${w}`);
+      lines.push('');
+    }
 
     // Metric table
     lines.push('| Metric | Value | Rating | Threshold |');
@@ -505,10 +541,16 @@ function generateHtmlReport(results, options = {}) {
           return `<div class="page-summary warn">${parts.join(' · ')}</div>`;
         })();
 
+    const warningsList = r.warnings && r.warnings.length
+      ? `<ul class="warnings">${r.warnings.map((w) => `<li>⚠️ ${_esc(w)}</li>`).join('')}</ul>`
+      : '';
+
     return `
       <section class="page-section">
         ${heading}
         <p class="page-meta">URL: <a href="${_esc(r.url)}">${_esc(r.url)}</a> &nbsp;·&nbsp; Collected: ${r.collectedAt ?? now} &nbsp;·&nbsp; Duration: ${r.collectionDurationMs ?? '—'}ms</p>
+        <p class="conditions">${_conditionsLines(r).map(_esc).join('<br>')}</p>
+        ${warningsList}
         ${summary}
         <h3>Core Web Vitals</h3>
         <div class="metric-grid core-grid">${coreCards}</div>
@@ -594,6 +636,8 @@ function generateHtmlReport(results, options = {}) {
   .summary-table .url-cell { font-size: .8rem; word-break: break-all; max-width: 300px; }
 
   .error { color: #e53e3e; font-weight: 600; }
+  .conditions { color: #4a5568; font-size: .85rem; margin: .5rem 0; }
+  .warnings { color: #975a16; font-size: .85rem; margin: .5rem 0 .5rem 1.2rem; }
 
   footer { text-align: center; padding: 2rem; color: #a0aec0; font-size: .8rem; }
 </style>

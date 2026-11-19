@@ -12,6 +12,7 @@
 
 const { THRESHOLDS, getRating, formatValue } = require('./thresholds');
 const { collectCWV, assertCWV, measureMultipleUrls, WEB_VITALS_CDN, WEB_VITALS_VERSION } = require('./collect');
+const { PRESETS, createMeasuredPage } = require('./conditions');
 const {
   printReport,
   printComparison,
@@ -22,6 +23,8 @@ const {
 
 module.exports = {
   collectCWV,
+  createMeasuredPage,
+  PRESETS,
   printReport,
   assertCWV,
   measureMultipleUrls,

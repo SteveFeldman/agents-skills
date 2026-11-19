@@ -2,6 +2,8 @@
 
 const { THRESHOLDS, RATING_ICONS, getRating, formatValue } = require('./thresholds');
 
+const { createMeasuredPage, presetConditions } = require('./conditions');
+
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -156,11 +158,12 @@ async function forceMetricFlush(page) {
  * @param {(page) => Promise<void>} [options.interact] - Custom interaction; runs instead of simulation
  * @param {number}  [options.waitAfterLoad=1500]   - ms to wait after injection before collecting
  * @param {boolean} [options.includeAttribution=true] - Include attribution debug data
+ * @param {object}  [options.conditions]           - Conditions from createMeasuredPage(); recorded on the result
  *
  * @returns {Promise<CWVResult>}
  */
 async function collectCWV(page, options = {}) {
-  const { simulate = true, interact, waitAfterLoad = 1500, includeAttribution = true } = options;
+  const { simulate = true, interact, waitAfterLoad = 1500, includeAttribution = true, conditions } = options;
   const started = Date.now();
   const warnings = [];
 
@@ -242,6 +245,15 @@ async function collectCWV(page, options = {}) {
     url: page.url(),
     metrics,
     warnings,
+    conditions: conditions || {
+      preset: 'unspecified',
+      label: 'Not recorded',
+      method: null,
+      network: null,
+      cpuSlowdown: null,
+      viewport: page.viewportSize(),
+      userAgent: null,
+    },
     collectedAt: new Date().toISOString(),
     collectionDurationMs: Date.now() - started,
   };
@@ -279,22 +291,27 @@ function assertCWV(result, thresholds) {
  *
  * @param {import('playwright').Browser} browser
  * @param {string[]} urls
- * @param {object} [options] - passed to collectCWV
+ * @param {object} [options] - passed to collectCWV, plus `preset` ('mobile' | 'desktop' | 'none', default 'mobile')
  * @returns {Promise<CWVResult[]>}
  */
 async function measureMultipleUrls(browser, urls, options = {}) {
+  const { preset = 'mobile', ...collectOptions } = options;
   const results = [];
   for (const url of urls) {
-    const context = await browser.newContext();
-    const page    = await context.newPage();
+    let context;
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      const result = await collectCWV(page, options);
-      results.push(result);
+      const measured = await createMeasuredPage(browser, preset);
+      context = measured.context;
+      await measured.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      results.push(
+        await collectCWV(measured.page, { ...collectOptions, conditions: measured.conditions }),
+      );
     } catch (err) {
-      results.push({ url, error: err.message, metrics: {} });
+      let conditions;
+      try { conditions = presetConditions(preset); } catch { conditions = undefined; }
+      results.push({ url, error: err.message, metrics: {}, warnings: [], conditions });
     } finally {
-      await context.close();
+      if (context) await context.close();
     }
   }
   return results;

@@ -14,6 +14,11 @@ function metric(name, value, attribution) {
 function makeResult(overrides = {}) {
   const result = {
     url: 'https://example.test/',
+    warnings: [],
+    conditions: {
+      preset: 'unspecified', label: 'Not recorded', method: null, network: null,
+      cpuSlowdown: null, viewport: null, userAgent: null,
+    },
     timestamp: '2026-01-01T00:00:00.000Z',
     metrics: {
       LCP: metric('LCP', 1823.4, {
