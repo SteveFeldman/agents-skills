@@ -2,12 +2,14 @@
 
 LCP (good at or under 2500 ms, poor over 4000 ms) is the time until the largest image or text block in the viewport is painted. `metrics.LCP.breakdown` splits it into four phases that add up to the whole. Find `breakdown.dominant`, state its milliseconds, name the element (`attribution.target`) and, for images, the resource (`attribution.url`), then fix that phase only. Skip any phase under 10% of the total.
 
-| Phase key | What it covers | Typical healthy share |
+| Phase key | What it covers | Typical share (rough rule of thumb, not a pass/fail threshold) |
 |---|---|---|
 | `timeToFirstByte` | Navigation start until the first byte of the HTML | about 40% |
 | `resourceLoadDelay` | First byte until the browser starts fetching the LCP resource | under 10% |
 | `resourceLoadDuration` | Download time of the LCP resource | about 40% |
 | `elementRenderDelay` | Resource finished until the element is painted | under 10% |
+
+Recommendations follow the dominant phase in milliseconds, not the share column.
 
 If the LCP element is text with no resource, the two resource phases are near zero and the time sits in the first and last phases.
 

@@ -28,7 +28,7 @@ On a local or loopback server, emulated network latency may not show up in the T
 
 ## Headless
 
-- `run.js` from playwright-dev defaults to a visible browser; `HEADLESS=true` runs headless. Both work for CWV.
+- Headless mode is set by the `headless` option in the script's `chromium.launch()`. `HEADLESS=true` has no effect, because `run.js` runs full scripts unchanged. Both modes work for CWV.
 - Headless and headed runs can differ a little. Pick one for a series of comparisons and stay with it.
 - Do not add GPU-related launch flags to chase a number; keep the launch arguments the same across runs you intend to compare.
 - Run the browser on an otherwise idle machine. Other load adds noise, especially with CPU throttling.

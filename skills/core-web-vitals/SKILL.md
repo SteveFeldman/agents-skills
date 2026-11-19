@@ -24,7 +24,7 @@ Measures LCP, INP and CLS (plus FCP and TTFB) inside Playwright scripts, records
 
 1. Write the script to `/tmp/cwv-check-*.js`.
 2. Create the page with `createMeasuredPage(browser, 'mobile')`, then `page.goto(url, { waitUntil: 'domcontentloaded' })`, then `collectCWV(page)`.
-3. Run it: `cd $PW_SKILL_DIR && HEADLESS=true node run.js /tmp/cwv-check-*.js`. `run.js` defaults to a visible browser; `HEADLESS=true` runs headless.
+3. Run it: `cd $PW_SKILL_DIR && node run.js /tmp/cwv-check-*.js`. Headless mode is set by the `headless` option in the script's `chromium.launch()`; `HEADLESS=true` has no effect.
 4. Report using the rules above: preset, dominant phase, element or resource.
 
 Presets: `mobile` (default, Moto G Power, Slow 4G, 4x CPU), `desktop` (1350x940, 40 ms RTT, 10 Mbps), `none` (no emulation). The throttled presets need Chromium.

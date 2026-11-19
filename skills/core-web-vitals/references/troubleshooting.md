@@ -1,7 +1,7 @@
 # Troubleshooting
 
-**The library fails to load or a strict-CSP page shows nothing.**
-`web-vitals` is vendored in `lib/vendor/` and injected through `page.evaluate`, so there is no network dependency. `createMeasuredPage` sets `bypassCSP: true`. If you made the page yourself with `browser.newContext()`, the CSP may block injection and conditions will read as unspecified; use `createMeasuredPage` instead.
+**The report says "Measurement conditions were not recorded".**
+`web-vitals` is vendored in `lib/vendor/` and injected through `page.evaluate`, so there is no network dependency. Page CSP does not block it. A page made with a plain `browser.newContext()` still measures, but its conditions are not recorded and results are likely unthrottled desktop; use `createMeasuredPage` so the conditions are recorded.
 
 **Conditions show "unspecified".**
 The page was created outside `createMeasuredPage`, or `conditions` was not passed to `collectCWV`. Rerun with both. Results are likely unthrottled desktop until then.
@@ -36,11 +36,11 @@ const { page, conditions } = await createMeasuredPage(browser, 'mobile', {
 });
 ```
 
-**`createMeasuredPage` or `measureMultipleUrls` throws about Chromium.**
-`mobile` and `desktop` use Chrome DevTools throttling. In Firefox or WebKit, use `preset: 'none'` and say the result is unthrottled.
+**`createMeasuredPage` throws about Chromium, or `measureMultipleUrls` returns errors.**
+`mobile` and `desktop` use Chrome DevTools throttling. `createMeasuredPage` throws in Firefox or WebKit; `measureMultipleUrls` does not throw for that, it returns an error entry for each URL. An unknown preset name throws up front. In Firefox or WebKit, use `preset: 'none'` and say the result is unthrottled.
 
 **Headless versus headed numbers differ.**
-Expected to a small degree. Use one mode for a comparison series. `run.js` is visible by default; `HEADLESS=true` runs headless.
+Expected to a small degree. Use one mode for a comparison series. Headless mode is set by the `headless` option in the script's `chromium.launch()`; `HEADLESS=true` has no effect on these scripts.
 
 **Tips**
 - Navigate first with `waitUntil: 'domcontentloaded'`, then collect; `networkidle` is fragile with analytics beacons.
