@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Button</title></head>
+<body><h1>Button fixture</h1>
+<button id="buy">Buy</button>
+<script>
+document.getElementById('buy').addEventListener('click', () => {
+  const end = performance.now() + 120;
+  while (performance.now() < end) {}
+  document.getElementById('buy').textContent = 'Bought';
+});
+</script>
+</body></html>

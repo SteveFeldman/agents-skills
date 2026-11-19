@@ -75,30 +75,41 @@ async function setupCollectors(page) {
 
 /**
  * Simulate user interactions to trigger INP measurement.
- * INP only records after at least one interaction — clicks, keyboard, etc.
+ * INP only records after at least one interaction. The click lands only on a
+ * point with no interactive element underneath, so simulation cannot follow
+ * links or submit forms; if no such point exists the click is skipped.
+ * Keyboard interactions (Tab, Shift) also count toward INP; scrolling does not.
  * This is best-effort; failures are silently ignored.
  *
  * @param {import('playwright').Page} page
  */
 async function simulateInteractions(page) {
   try {
-    const { w, h } = await page.evaluate(() => ({
-      w: document.documentElement.clientWidth,
-      h: document.documentElement.clientHeight,
-    }));
+    const point = await page.evaluate(() => {
+      const w = document.documentElement.clientWidth;
+      const h = document.documentElement.clientHeight;
+      const interactive =
+        'a,button,input,select,textarea,label,summary,iframe,video,' +
+        '[role=button],[role=link],[onclick],[contenteditable]';
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+          const x = Math.floor(w * (0.1 + 0.2 * i));
+          const y = Math.floor(h * (0.1 + 0.2 * j));
+          const el = document.elementFromPoint(x, y);
+          if (el && !el.closest(interactive)) return { x, y };
+        }
+      }
+      return null;
+    });
 
-    // Click the center of the visible page
-    await page.mouse.click(Math.floor(w / 2), Math.floor(h / 2));
-    await page.waitForTimeout(200);
+    if (point) {
+      await page.mouse.click(point.x, point.y);
+      await page.waitForTimeout(200);
+    }
 
-    // Tab navigation (keyboard interaction)
     await page.keyboard.press('Tab');
     await page.waitForTimeout(200);
-
-    // Scroll — triggers layout and paint recalculation
-    await page.keyboard.press('PageDown');
-    await page.waitForTimeout(300);
-    await page.keyboard.press('PageUp');
+    await page.keyboard.press('Shift');
     await page.waitForTimeout(200);
   } catch {
     // Interaction simulation is best-effort; carry on without it
@@ -142,30 +153,63 @@ async function forceMetricFlush(page) {
  * @param {import('playwright').Page} page  - Playwright page (already navigated)
  * @param {object}  [options]
  * @param {boolean} [options.simulate=true]        - Simulate clicks/keys to trigger INP
+ * @param {(page) => Promise<void>} [options.interact] - Custom interaction; runs instead of simulation
  * @param {number}  [options.waitAfterLoad=1500]   - ms to wait after injection before collecting
  * @param {boolean} [options.includeAttribution=true] - Include attribution debug data
  *
  * @returns {Promise<CWVResult>}
  */
 async function collectCWV(page, options = {}) {
-  const { simulate = true, waitAfterLoad = 1500, includeAttribution = true } = options;
+  const { simulate = true, interact, waitAfterLoad = 1500, includeAttribution = true } = options;
   const started = Date.now();
+  const warnings = [];
 
   await injectWebVitals(page);
   await setupCollectors(page);
 
-  // Let the page settle and let early metrics (FCP, TTFB, LCP) register
-  await page.waitForTimeout(waitAfterLoad);
+  const originalUrl = page.url();
+  let lastSnapshot = {};
+  const snapshot = async () => {
+    lastSnapshot = await page.evaluate(() =>
+      JSON.parse(JSON.stringify(window.__cwvData || {})),
+    );
+  };
 
-  if (simulate) {
-    await simulateInteractions(page);
+  let raw;
+  try {
+    // Let the page settle and let early metrics (FCP, TTFB, LCP) register
+    await page.waitForTimeout(waitAfterLoad);
+
+    // The browser stops LCP at first input, so input must come after load
+    await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {
+      warnings.push(
+        'Page did not reach the load event within 15s; LCP may be truncated by simulated input.',
+      );
+    });
+    await snapshot();
+
+    if (typeof interact === 'function') {
+      await interact(page);
+    } else if (simulate) {
+      await simulateInteractions(page);
+    }
+
+    // Flush pending metric reports
+    await forceMetricFlush(page);
+
+    // Retrieve collected data from the browser context
+    raw = await page.evaluate(() => window.__cwvData || {});
+    if (page.url() !== originalUrl) throw new Error('navigated');
+  } catch (err) {
+    const currentUrl = page.url();
+    const navigated =
+      currentUrl !== originalUrl || /Execution context was destroyed|navigat/i.test(err.message);
+    if (!navigated) throw err;
+    warnings.push(
+      `Page navigated to ${currentUrl} during collection; metrics are from ${originalUrl} before the navigation (INP may be missing).`,
+    );
+    raw = lastSnapshot;
   }
-
-  // Flush pending metric reports
-  await forceMetricFlush(page);
-
-  // Retrieve collected data from the browser context
-  const raw = await page.evaluate(() => window.__cwvData || {});
 
   const metrics = {};
   for (const [name, m] of Object.entries(raw)) {
@@ -184,6 +228,7 @@ async function collectCWV(page, options = {}) {
   return {
     url: page.url(),
     metrics,
+    warnings,
     collectedAt: new Date().toISOString(),
     collectionDurationMs: Date.now() - started,
   };
