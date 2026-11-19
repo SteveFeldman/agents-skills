@@ -2,11 +2,11 @@
 
 ## Presets
 
-| Preset | Emulation | Network | CPU |
-|---|---|---|---|
-| `mobile` (default) | 412x823, DPR 1.75, mobile and touch, Moto G Power user agent | 150 ms latency, 1638.4 kbps down, 750 kbps up (Slow 4G) | 4x slowdown |
-| `desktop` | 1350x940, DPR 1 | 40 ms latency, 10 Mbps both ways | none |
-| `none` | none | none | none, explicitly unthrottled |
+| Preset | Report label | Emulation | Network | CPU |
+|---|---|---|---|---|
+| `mobile` (default) | Mobile (Moto G Power, Slow 4G, 4× CPU) | 412x823, DPR 1.75, mobile and touch, Moto G Power user agent | 150 ms latency, 1638.4 kbps down, 750 kbps up (Slow 4G) | 4x slowdown |
+| `desktop` | Desktop (1350×940, 40ms RTT, 10 Mbps) | 1350x940, DPR 1 | 40 ms latency, 10 Mbps both ways | none |
+| `none` | No throttling (unthrottled host machine) | none | none | none, explicitly unthrottled |
 
 `createMeasuredPage(browser, preset, contextOptions)` returns `{ context, page, conditions }`. `conditions` carries the preset name, its label, the throttling method and the values; pass it to `collectCWV` so every report states it. The context always sets `bypassCSP: true` so the injected library works on strict-CSP pages.
 
