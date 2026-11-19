@@ -2,13 +2,26 @@
 
 const { THRESHOLDS, RATING_ICONS, getRating, formatValue } = require('./thresholds');
 
+const fs = require('node:fs');
+const path = require('node:path');
+
+const WEB_VITALS_VERSION = '6.2.3';
+
+// Kept for compatibility; the library is vendored and no longer fetched.
 const WEB_VITALS_CDN =
-  'https://unpkg.com/web-vitals@5/dist/web-vitals.attribution.iife.js';
+  `https://unpkg.com/web-vitals@${WEB_VITALS_VERSION}/dist/web-vitals.attribution.iife.js`;
+
+const WEB_VITALS_SOURCE = fs.readFileSync(
+  path.join(__dirname, 'vendor', 'web-vitals.attribution.iife.js'),
+  'utf8',
+);
 
 /**
- * Inject the web-vitals library into an already-loaded page.
- * Uses unpkg CDN; the library uses buffered PerformanceObserver so late
- * injection still captures LCP, FCP, CLS, TTFB accurately.
+ * Inject the vendored web-vitals library into an already-loaded page.
+ * The source is passed to page.evaluate() as a string, which Playwright runs
+ * as a top-level CDP Runtime.evaluate expression, so page CSP does not apply
+ * and no network request is made. The library uses buffered PerformanceObserver
+ * so late injection still captures LCP, FCP, CLS, TTFB accurately.
  *
  * @param {import('playwright').Page} page
  */
@@ -18,15 +31,13 @@ async function injectWebVitals(page) {
   ).catch(() => false);
 
   if (!alreadyLoaded) {
-    await page.addScriptTag({ url: WEB_VITALS_CDN });
+    await page.evaluate(WEB_VITALS_SOURCE + '\n;window.webVitals = webVitals; void 0;');
     await page
       .waitForFunction(() => typeof window.webVitals !== 'undefined', {
         timeout: 15000,
       })
       .catch(() => {
-        throw new Error(
-          'web-vitals library failed to load. Check network access to unpkg.com.',
-        );
+        throw new Error('web-vitals failed to initialise in the page');
       });
   }
 }
@@ -240,4 +251,5 @@ module.exports = {
   assertCWV,
   measureMultipleUrls,
   WEB_VITALS_CDN,
+  WEB_VITALS_VERSION,
 };

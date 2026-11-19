@@ -11,7 +11,7 @@
  */
 
 const { THRESHOLDS, getRating, formatValue } = require('./thresholds');
-const { collectCWV, assertCWV, measureMultipleUrls, WEB_VITALS_CDN } = require('./collect');
+const { collectCWV, assertCWV, measureMultipleUrls, WEB_VITALS_CDN, WEB_VITALS_VERSION } = require('./collect');
 const {
   printReport,
   printComparison,
@@ -31,6 +31,7 @@ module.exports = {
   saveReport,
   THRESHOLDS,
   WEB_VITALS_CDN,
+  WEB_VITALS_VERSION,
   getRating,
   formatValue,
 };
