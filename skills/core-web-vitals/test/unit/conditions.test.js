@@ -29,3 +29,9 @@ test('unknown preset name is rejected before the browser check', async () => {
   const fake = { browserType: () => ({ name: () => 'firefox' }) };
   await assert.rejects(createMeasuredPage(fake, 'tablet'), /Unknown preset "tablet"/);
 });
+
+test('measureMultipleUrls validates the preset once, up front', async () => {
+  const { measureMultipleUrls } = require('../../lib/cwv-collector');
+  const fake = { browserType: () => ({ name: () => 'chromium' }) };
+  await assert.rejects(measureMultipleUrls(fake, ['http://a', 'http://b'], { preset: 'tablet' }), /Unknown preset "tablet"/);
+});

@@ -39,7 +39,7 @@ function printReport(result) {
   for (const w of result.warnings || []) console.log(`  ⚠️   Warning: ${w}`);
   console.log('══════════════════════════════════════════════');
 
-  console.log('\n📊  Core Web Vitals  (Google ranking signals)');
+  console.log('\n📊  Core Web Vitals  (lab)');
   console.log('──────────────────────────────────────────────');
   for (const name of CORE) {
     const m = result.metrics[name];
@@ -83,7 +83,7 @@ function printReport(result) {
 
   console.log('\n──────────────────────────────────────────────');
   if (allCore && allGood) {
-    console.log('  ✅  All Core Web Vitals are GOOD');
+    console.log('  ✅  All Core Web Vitals are good in this lab run');
   } else if (allCore) {
     const failing = CORE.filter(
       (n) => result.metrics[n]?.rating !== 'good',
@@ -144,7 +144,7 @@ function printComparison(results) {
 
   for (const [i, r] of results.entries()) {
     const shortUrl = r.url.replace(/^https?:\/\//, '').slice(0, 60);
-    console.log(`\n  🌐  ${shortUrl}`);
+    console.log(`\n  🌐  ${shortUrl}${r.warnings?.length > 0 ? ' ⚠' : ''}`);
     if (!shared) console.log(`     ${labels[i]}`);
     if (r.error) {
       console.log(`     ❌  Error: ${r.error}`);
@@ -325,7 +325,7 @@ function generateMarkdownReport(results, options = {}) {
         const m = r.metrics?.[n];
         return m ? `${m.formatted} ${m.ratingIcon}` : '—';
       });
-      lines.push(`| ${shortUrl} | ${cols.join(' | ')} |`);
+      lines.push(`| ${shortUrl}${r.warnings?.length > 0 ? ' ⚠' : ''} | ${cols.join(' | ')} |`);
     }
     lines.push('');
   }
@@ -570,7 +570,7 @@ function generateHtmlReport(results, options = {}) {
     const rows = list.map((r) => {
       if (r.error) return `<tr><td>${_esc(r.url)}</td><td colspan="5" class="error">Error: ${_esc(r.error)}</td></tr>`;
       return `<tr>
-        <td class="url-cell">${_esc(r.url)}</td>
+        <td class="url-cell">${_esc(r.url)}${r.warnings?.length > 0 ? ' ⚠' : ''}</td>
         ${ALL.map((n) => {
           const m = r.metrics?.[n];
           const c = RATING_COLORS[m?.rating ?? 'unknown'];
@@ -597,7 +597,7 @@ function generateHtmlReport(results, options = {}) {
 
     const allGood = CORE.every((n) => r.metrics?.[n]?.rating === 'good');
     const summary = allGood
-      ? `<div class="page-summary good">✅ All Core Web Vitals are Good</div>`
+      ? `<div class="page-summary good">✅ All Core Web Vitals are good in this lab run</div>`
       : (() => {
           const failing = CORE.filter((n) => r.metrics?.[n] && r.metrics[n].rating !== 'good');
           const missing = CORE.filter((n) => !r.metrics?.[n]);

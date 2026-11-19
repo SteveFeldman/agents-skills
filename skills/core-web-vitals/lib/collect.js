@@ -29,14 +29,18 @@ const WEB_VITALS_SOURCE = fs.readFileSync(
  * @param {import('playwright').Page} page
  */
 async function injectWebVitals(page) {
+  // The pinned library lives in window.__cwvWebVitals; the page's own
+  // window.webVitals (if any) is never read or modified.
   const alreadyLoaded = await page.evaluate(
-    () => typeof window.webVitals !== 'undefined',
-  ).catch(() => false);
+    () => typeof window.__cwvWebVitals !== 'undefined',
+  );
 
   if (!alreadyLoaded) {
-    await page.evaluate(WEB_VITALS_SOURCE + '\n;window.webVitals = webVitals; void 0;');
+    await page.evaluate(
+      '(function(){ ' + WEB_VITALS_SOURCE + '\n; window.__cwvWebVitals = webVitals; })(); void 0;',
+    );
     await page
-      .waitForFunction(() => typeof window.webVitals !== 'undefined', {
+      .waitForFunction(() => typeof window.__cwvWebVitals !== 'undefined', {
         timeout: 15000,
       })
       .catch(() => {
@@ -68,11 +72,11 @@ async function setupCollectors(page) {
     };
 
     // reportAllChanges: true ensures we get the latest accumulated value
-    window.webVitals.onLCP(report, { reportAllChanges: true });
-    window.webVitals.onCLS(report, { reportAllChanges: true });
-    window.webVitals.onINP(report, { reportAllChanges: true });
-    window.webVitals.onFCP(report);
-    window.webVitals.onTTFB(report);
+    window.__cwvWebVitals.onLCP(report, { reportAllChanges: true });
+    window.__cwvWebVitals.onCLS(report, { reportAllChanges: true });
+    window.__cwvWebVitals.onINP(report, { reportAllChanges: true });
+    window.__cwvWebVitals.onFCP(report);
+    window.__cwvWebVitals.onTTFB(report);
   });
 }
 
@@ -168,10 +172,29 @@ async function collectCWV(page, options = {}) {
   const started = Date.now();
   const warnings = [];
 
-  await injectWebVitals(page);
-  await setupCollectors(page);
+  const CONTEXT_DESTROYED = /Execution context was destroyed/;
+  let earlyEmpty = false;
+  try {
+    await injectWebVitals(page);
+    await setupCollectors(page);
+  } catch (err) {
+    if (!CONTEXT_DESTROYED.test(String(err?.message ?? err))) throw err;
+    // The document was replaced (redirect) while setting up; measure the new one.
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+    warnings.push(
+      `Page redirected to ${page.url()} before collection started; metrics are from the redirected page.`,
+    );
+    try {
+      await injectWebVitals(page);
+      await setupCollectors(page);
+    } catch (err2) {
+      if (!CONTEXT_DESTROYED.test(String(err2?.message ?? err2))) throw err2;
+      earlyEmpty = true;
+    }
+  }
 
   const originalUrl = page.url();
+  let navigated = false;
   let lastSnapshot = {};
 
   // Reads collector data from the current document. Returns null when the
@@ -182,8 +205,9 @@ async function collectCWV(page, options = {}) {
     );
 
   const NAVIGATED = Symbol('navigated');
-  let raw;
+  let raw = {};
   try {
+    if (earlyEmpty) throw new Error('skip');
     // Let the page settle (early metrics: FCP, TTFB, LCP), refreshing the
     // snapshot only while still on the original document.
     const deadline = Date.now() + waitAfterLoad;
@@ -218,14 +242,21 @@ async function collectCWV(page, options = {}) {
     raw = await readData();
     if (raw === null) throw NAVIGATED;
   } catch (err) {
-    const message = String(err?.message ?? err);
-    if (err !== NAVIGATED && !/Execution context was destroyed|navigat/i.test(message)) {
-      throw err;
+    if (!earlyEmpty) {
+      const message = String(err?.message ?? err);
+      // Only a lost document counts as navigation; any other error (for
+      // example a Playwright timeout inside interact) is the caller's.
+      const isNav =
+        err === NAVIGATED ||
+        CONTEXT_DESTROYED.test(message) ||
+        (await readData().catch(() => null)) === null;
+      if (!isNav) throw err;
+      navigated = true;
+      warnings.push(
+        `Page navigated to ${page.url()} during collection; metrics are from ${originalUrl} before the navigation (INP may be missing).`,
+      );
+      raw = lastSnapshot;
     }
-    warnings.push(
-      `Page navigated to ${page.url()} during collection; metrics are from ${originalUrl} before the navigation (INP may be missing).`,
-    );
-    raw = lastSnapshot;
   }
 
   const metrics = {};
@@ -244,7 +275,7 @@ async function collectCWV(page, options = {}) {
   }
 
   return {
-    url: page.url(),
+    url: navigated ? originalUrl : page.url(),
     metrics,
     warnings,
     conditions: conditions || {
@@ -298,6 +329,7 @@ function assertCWV(result, thresholds) {
  */
 async function measureMultipleUrls(browser, urls, options = {}) {
   const { preset = 'mobile', ...collectOptions } = options;
+  presetConditions(preset); // throws once, up front, for an unknown preset
   const results = [];
   for (const url of urls) {
     let context;

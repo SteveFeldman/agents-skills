@@ -76,3 +76,10 @@ test('measureMultipleUrls keeps going and records conditions on error entries', 
   assert.ok(rs[1].metrics.LCP);
   assert.equal(rs[1].conditions.preset, 'mobile');
 });
+
+test('recorded viewport honors contextOptions.viewport', async () => {
+  const { createMeasuredPage } = require('../../lib/cwv-collector');
+  const { context, conditions } = await createMeasuredPage(browser, 'mobile', { viewport: { width: 1000, height: 700 } });
+  await context.close();
+  assert.deepEqual(conditions.viewport, { width: 1000, height: 700 });
+});

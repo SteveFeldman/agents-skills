@@ -106,7 +106,7 @@ async function createMeasuredPage(browser, preset = 'mobile', contextOptions = {
     }
     const userAgent = await page.evaluate(() => navigator.userAgent);
     const conditions = presetConditions(preset, {
-      viewport: p.context.viewport || page.viewportSize(),
+      viewport: page.viewportSize(),
       userAgent,
     });
     return { context, page, conditions };
