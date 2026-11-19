@@ -1,0 +1,35 @@
+# Starter gooze.yaml for PR / gap-finding runs. Copy to the module root of the ISOLATED workspace
+# (Gooze reads ./gooze.yaml only; there is no --config flag). Flags and GOOZE_* env vars override it.
+# Keys verified with `gooze config show` on Gooze v1.6.1.
+
+# Keep reports and logs outside the repo tree so `git status` stays clean.
+output: /tmp/gooze-reports
+no_update_check: true   # skips the release lookup on proxy.golang.org (Gooze's only implicit network call)
+log:
+  filename: /tmp/gooze.log
+
+paths:
+  # Regexes matched against the relative path, absolute path or base filename.
+  # vendor/, testdata/, dot/underscore dirs and nested modules are skipped automatically.
+  # Gooze does not skip generated files by their header, so exclude them here.
+  exclude:
+    - '\.pb\.go$'
+    - '_string\.go$'
+    - '_gen\.go$'
+    - 'zz_generated\.'
+    - '(^|/)mocks?/'
+    - '(^|/)mock_'
+
+run:
+  parallel: 2            # each mutant runs `go test` for its package; raise only if tests are hermetic
+  mutation_timeout: 120  # seconds per mutant; hangs become `timeout` (not a kill)
+  workspace: overlay     # builds through `go test -overlay`; never writes to the checkout
+  # Opt-in mutagens add if/else removal (branch), statement deletion (statement) and loop changes (loop)
+  # on top of the nine defaults. Branch and statement are the closest match to a "remove the guard" mutant.
+  # Many `loop` mutants hang or fail to build, so add it only when asked.
+  mutagens: [arithmetic, comparison, logical, boolean, numbers, unary, bitwise, increment, assignment, branch, statement]
+  # test_flags: ['-short']   # e.g. -short, -race, -tags=integration, -skip=...  (-json, -count, -vet, -overlay, -c, -o are rejected)
+
+# No gates by default: report only what ran. Add thresholds only when the user asks.
+threshold:
+  timeouts: survived   # timeouts count against the score (default)

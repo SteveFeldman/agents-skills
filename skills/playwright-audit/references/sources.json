@@ -1,0 +1,363 @@
+{
+  "_readme": "backing: official = the docs explicitly recommend or discourage this; partial = the docs describe the behavior or cover part of the rule, severity/threshold is our convention; none = convention with no source yet (needs backing). Quotes were checked against the live docs. tag: debugging-best-practice marks the failure-artifact rules (trace, screenshot, video on failure), which we require together as a debugging standard.",
+  "base": "https://playwright.dev/docs/",
+  "rules": {
+    "PW001": {
+      "backing": "official",
+      "docs": [
+        "api/class-page"
+      ],
+      "quote": "page.waitForTimeout: Discouraged. Never wait for timeout in production. Tests that wait for time are inherently flaky."
+    },
+    "PW002": {
+      "backing": "official",
+      "docs": [
+        "api/class-page",
+        "api/class-elementhandle"
+      ],
+      "quote": "page.$ / page.$$: Discouraged, use locator-based page.locator() instead. page.waitForSelector: Discouraged, use web assertions or locator.waitFor()."
+    },
+    "PW003": {
+      "backing": "official",
+      "docs": [
+        "api/class-page"
+      ],
+      "quote": "waitUntil 'networkidle' - DISCOURAGED."
+    },
+    "PW004": {
+      "backing": "official",
+      "docs": [
+        "best-practices",
+        "api/class-locator"
+      ],
+      "quote": "Use web first assertions; expect(await locator.isVisible()).toBe(true) will not wait. locator.isVisible: use expect(locator).toBeVisible() to avoid flakiness."
+    },
+    "PW005": {
+      "backing": "official",
+      "docs": [
+        "api/class-testconfig"
+      ],
+      "quote": "forbidOnly: exit with an error if any tests are marked test.only(). Useful on CI."
+    },
+    "PW006": {
+      "backing": "official",
+      "docs": [
+        "test-annotations"
+      ],
+      "quote": "test.skip() marks the test as irrelevant; test.fixme() marks the test as failing. The docs treat both as valid. This is an informational notice (not scored) so the team stays aware of skipped tests, not a claim that skipping is a defect."
+    },
+    "PW007": {
+      "backing": "partial",
+      "docs": [
+        "actionability"
+      ],
+      "quote": "Playwright runs actionability checks before real actions; force disables non-essential ones. A raw el.click() inside evaluate() skips them entirely (our inference). Descriptive only; the docs do not call either an anti-pattern. Severity is ours."
+    },
+    "PW008": {
+      "backing": "partial",
+      "docs": [
+        "api/class-page"
+      ],
+      "quote": "Extends the waitForTimeout guidance to hand-rolled sleeps. The docs do not name setTimeout explicitly."
+    },
+    "PW010": {
+      "backing": "partial",
+      "docs": [
+        "api/class-locator"
+      ],
+      "quote": "isVisible does not wait; docs steer to expect(locator).toBeVisible(). Treating branch probes as low severity is our convention."
+    },
+    "PW101": {
+      "backing": "official",
+      "docs": [
+        "best-practices",
+        "locators"
+      ],
+      "quote": "Prefer user-facing attributes to XPath or CSS selectors."
+    },
+    "PW102": {
+      "backing": "official",
+      "docs": [
+        "best-practices",
+        "locators"
+      ],
+      "quote": "Prefer user-facing attributes to XPath or CSS selectors; a class change breaks the test."
+    },
+    "PW103": {
+      "backing": "official",
+      "docs": [
+        "best-practices"
+      ],
+      "quote": "Prefer user-facing attributes to CSS selectors; having tests depend on DOM structure can lead to failing tests. #id selectors are folded in here as part of the locator-preference guidance (the docs do not name #id specifically)."
+    },
+    "PW105": {
+      "backing": "official",
+      "docs": [
+        "locators"
+      ],
+      "quote": "Playwright warns that first(), last(), and nth() can select an unintended element when the page changes, and documents their use for lists distinguished by order. The scanner surfaces candidates, not defects; the reviewer assesses whether order is intentional."
+    },
+    "PW201": {
+      "backing": "partial",
+      "docs": [
+        "test-assertions"
+      ],
+      "quote": "Engineering best practice: verify the intended outcome explicitly. PW201 is a static heuristic; review whether a helper, thrown error, or another check already verifies that outcome. Playwright documents assertions but does not require one in every test.",
+      "tag": "engineering-best-practice"
+    },
+    "PW203": {
+      "backing": "official",
+      "docs": [
+        "api/class-test"
+      ],
+      "quote": "test.describe.serial: Discouraged. Using serial is not recommended. It is usually better to make your tests isolated."
+    },
+    "PW204": {
+      "backing": "partial",
+      "docs": [
+        "test-use-options"
+      ],
+      "quote": "baseURL allows navigating by using just the path, for example page.goto('/settings'). Descriptive; no explicit prohibition of absolute URLs."
+    },
+    "PW205": {
+      "backing": "official",
+      "docs": [],
+      "external": [
+        "https://cwe.mitre.org/data/definitions/798.html",
+        "https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_password"
+      ],
+      "quote": "CWE-798 Use of Hard-coded Credentials: the software contains hard-coded credentials, such as a password or cryptographic key, which it uses for its own inbound authentication, outbound communication to external components, or encryption of internal data. External standard (CWE/OWASP), not Playwright guidance."
+    },
+    "PW206": {
+      "backing": "partial",
+      "docs": [
+        "api/class-testinfo",
+        "api/class-test"
+      ],
+      "tag": "debugging-best-practice",
+      "quote": "The docs do not discourage console.log. They document the alternatives: testInfo.attach() attaches a value or file to the test result, and test.step reports structured steps. Preferring them for diagnostics is our debugging best practice. Reporter markers like [[KEY|value]] are exempt."
+    },
+    "PW301": {
+      "backing": "official",
+      "docs": [
+        "network"
+      ],
+      "quote": "Docs create the waitForResponse promise first ('Note no await'), then click, then await the response."
+    },
+    "PW302": {
+      "backing": "partial",
+      "docs": [
+        "best-practices",
+        "mock"
+      ],
+      "quote": "Avoid testing third-party dependencies; use the Network API to guarantee the response needed. The docs do not require every suite to mock. Severity and the 'suite never mocks' heuristic are ours."
+    },
+    "PW401": {
+      "backing": "official",
+      "docs": [
+        "api/class-testconfig"
+      ],
+      "quote": "forbidOnly: ... Useful on CI."
+    },
+    "PW402": {
+      "backing": "partial",
+      "docs": [
+        "test-retries",
+        "api/class-testconfig"
+      ],
+      "quote": "Playwright documents how retries work and how to configure them. Requiring retries in CI is a deliberate audit convention, not a Playwright requirement."
+    },
+    "PW403": {
+      "backing": "official",
+      "docs": [
+        "best-practices",
+        "trace-viewer"
+      ],
+      "quote": "Traces run on CI on the first retry. We don't recommend setting this to 'on', it is very performance heavy.",
+      "tag": "debugging-best-practice"
+    },
+    "PW404": {
+      "backing": "partial",
+      "tag": "debugging-best-practice",
+      "docs": [
+        "best-practices",
+        "api/class-testoptions",
+        "test-use-options"
+      ],
+      "quote": "Debugging best practice (ours): capture a screenshot on failure. The docs' own config example shows screenshot: 'only-on-failure' ('Capture screenshot after each test failure'), but the best-practices page ranks the trace viewer above screenshots and videos for CI debugging. Requiring it is our convention."
+    },
+    "PW405": {
+      "backing": "partial",
+      "docs": [
+        "best-practices",
+        "test-parallel"
+      ],
+      "quote": "Playwright runs tests in parallel by default; files are parallel, tests within a file are not unless fullyParallel or describe.configure({ mode: 'parallel' }). Recommending fullyParallel is our convention."
+    },
+    "PW406": {
+      "backing": "partial",
+      "docs": [
+        "test-use-options"
+      ],
+      "quote": "baseURL allows navigating by using just the path. Descriptive."
+    },
+    "PW407": {
+      "backing": "none",
+      "docs": [
+        "test-reporters"
+      ],
+      "quote": "General reviewer guidance, not Playwright guidance. The docs say a config without a reporter is valid ('dot' is the CI default). PW407 only checks that a reporter is configured.",
+      "tag": "general-reviewer"
+    },
+    "PW408": {
+      "backing": "partial",
+      "docs": [
+        "ci",
+        "test-parallel"
+      ],
+      "quote": "The CI page recommends setting workers to 1 in CI for stability, and warns that overriding workers above the detected core count causes timeouts and failures; the default is the core count. Requiring an explicit setting is our convention; the severity is ours."
+    },
+    "PW409": {
+      "backing": "partial",
+      "tag": "debugging-best-practice",
+      "docs": [
+        "best-practices",
+        "api/class-testoptions",
+        "trace-viewer"
+      ],
+      "quote": "Debugging best practice (ours): record video on failure. The docs document the video option (retain-on-failure, on-first-retry) but recommend the trace viewer over videos for CI debugging. Requiring it is our convention."
+    }
+  },
+  "checks": {
+    "assertion-matches-title": {
+      "backing": "partial",
+      "docs": [
+        "best-practices"
+      ],
+      "quote": "Best practices: the end user sees what is rendered, so tests should check the same rendered output. That a test asserts what its title claims is our review convention."
+    },
+    "no-vacuous-negatives": {
+      "backing": "none",
+      "docs": [
+        "test-assertions"
+      ],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "app-startup-fits-environment": {
+      "backing": "official",
+      "docs": [
+        "test-webserver"
+      ],
+      "quote": "webServer launches the dev server before tests."
+    },
+    "explicit-fulfill-fields": {
+      "backing": "partial",
+      "docs": [
+        "mock"
+      ],
+      "quote": "route.fulfill options are documented; requiring explicit status/contentType is our convention."
+    },
+    "route-patterns-environment-agnostic": {
+      "backing": "partial",
+      "docs": [
+        "network"
+      ],
+      "quote": "Network docs: URL patterns are globs or RegExp, and a glob must match the entire URL, so a hardcoded host makes a route environment-specific. Preferring host-agnostic patterns is our convention."
+    },
+    "third-party-isolated": {
+      "backing": "official",
+      "docs": [
+        "best-practices"
+      ],
+      "quote": "Avoid testing third-party dependencies; use the Network API to guarantee the response."
+    },
+    "role-first-for-interactive-elements": {
+      "backing": "official",
+      "docs": [
+        "best-practices",
+        "locators"
+      ],
+      "quote": "Prioritize user-facing attributes and explicit contracts; getByRole first."
+    },
+    "project-test-id-consistent": {
+      "backing": "official",
+      "docs": [
+        "locators",
+        "test-use-options"
+      ],
+      "quote": "Test ids are supported and testIdAttribute lets you use a custom data attribute."
+    },
+    "legacy-debt-not-blocking": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "behavior-change-has-test": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "test-fails-without-change": {
+      "backing": "partial",
+      "docs": [
+        "test-cli"
+      ],
+      "quote": "test-cli documents --repeat-each <N> (run each test N times) as the way to gather stability evidence. Requiring a test to fail without the change is our review convention."
+    },
+    "no-duplicate-helpers": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "improvements-credited": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "shared-setup-extracted": {
+      "backing": "official",
+      "docs": [
+        "best-practices"
+      ],
+      "quote": "Use before and after hooks to avoid repetition; a little duplication is also fine when tests are simple."
+    },
+    "page-objects-for-shared-pages": {
+      "backing": "official",
+      "docs": [
+        "pom"
+      ],
+      "quote": "Page object models are documented as a way to simplify authoring and maintenance."
+    },
+    "no-repeated-ui-login": {
+      "backing": "official",
+      "docs": [
+        "auth",
+        "best-practices"
+      ],
+      "quote": "Log in once with a setup project and reuse the signed-in state."
+    },
+    "ci-reporter": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "no-new-blocking-findings": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    },
+    "config-blast-radius-stated": {
+      "backing": "none",
+      "docs": [],
+      "quote": "General reviewer guidance: review-process practice authored for this skill, not sourced from Playwright documentation.",
+      "tag": "general-reviewer"
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "instruction": "Keep tests independent, grouped, readable and free of secrets",
+  "relevant_when": "Spec files, fixtures or page objects are written or reorganized",
+  "context": "Tests must run alone and in any order. Shared setup belongs in fixtures or beforeEach rather than copy-pasted navigation. Page objects encapsulate locators and actions for pages used by several specs. Credentials and absolute environment URLs must not appear in test code.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    },
+    {
+      "type": "file",
+      "filename": "references/judgment-checklist.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "shared-setup-extracted",
+      "rule": "Setup repeated across tests lives in a fixture or beforeEach instead of being duplicated in each test",
+      "relevant_when": "Several tests start with the same steps",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices"
+      ]
+    },
+    {
+      "name": "tests-independent",
+      "rule": "Tests do not depend on execution order or on state created by another test; describe.serial is not used to hide coupling",
+      "relevant_when": "A spec file is added or changed",
+      "rule_ids": [
+        "PW203"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/api/class-test"
+      ]
+    },
+    {
+      "name": "page-objects-for-shared-pages",
+      "rule": "Locators and actions for a page or component used by multiple specs live in a page object or component class",
+      "relevant_when": "The same page is exercised in more than one spec",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/pom"
+      ]
+    },
+    {
+      "name": "skips-explained",
+      "rule": "Skipped tests (unconditional test.skip or test.fixme) are listed for awareness in the report; each states a ticket or reason, and conditional skips state the condition. Informational, not scored",
+      "relevant_when": "A test is skipped",
+      "rule_ids": [
+        "PW006"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/test-annotations"
+      ]
+    },
+    {
+      "name": "no-hardcoded-secrets",
+      "rule": "No credentials, tokens or API keys appear as literals in test code; they come from environment variables or a secret store",
+      "relevant_when": "Test code uses authentication data",
+      "rule_ids": [
+        "PW205"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://cwe.mitre.org/data/definitions/798.html",
+        "https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_password"
+      ]
+    },
+    {
+      "name": "relative-urls",
+      "rule": "Navigation uses paths relative to baseURL instead of hardcoded absolute URLs",
+      "relevant_when": "A test navigates to a page",
+      "rule_ids": [
+        "PW204"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/test-use-options"
+      ]
+    },
+    {
+      "name": "no-debug-output",
+      "rule": "Leftover console.log is not committed in specs. Diagnostic values worth keeping are attached with testInfo.attach or reported through test.step (debugging best practice). Reporter markers such as [[KEY|value]] are exempt",
+      "relevant_when": "A spec file is added or changed",
+      "rule_ids": [
+        "PW206"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/api/class-testinfo",
+        "https://playwright.dev/docs/api/class-test"
+      ]
+    },
+    {
+      "name": "no-repeated-ui-login",
+      "rule": "Authentication is established once or through a fixture or API (storageState or an equivalent), not repeated through the UI in every test",
+      "relevant_when": "The app requires authentication",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/auth",
+        "https://playwright.dev/docs/best-practices"
+      ]
+    }
+  ]
+}

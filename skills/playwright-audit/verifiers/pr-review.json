@@ -1,0 +1,119 @@
+{
+  "instruction": "Review a pull request that touches Playwright code for new defects, test-to-change fit and blast radius",
+  "relevant_when": "A pull request changes spec files, page objects, fixtures or playwright.config.*",
+  "context": "Block only on issues the pull request introduces. Pre-existing debt in touched files is reported separately and never blocks. A pull request must keep behavior changes and tests in step, and must state the blast radius of shared-code or config changes.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "SKILL.md"
+    },
+    {
+      "type": "file",
+      "filename": "references/judgment-checklist.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "no-new-blocking-findings",
+      "rule": "No critical or high scanner finding sits on a line the pull request added",
+      "relevant_when": "Always, in PR mode",
+      "rule_ids": [
+        "PW001",
+        "PW005",
+        "PW008",
+        "PW101",
+        "PW201",
+        "PW205",
+        "PW301",
+        "PW401"
+      ],
+      "backing": "none",
+      "docs": [
+        "https://playwright.dev/docs/api/class-page",
+        "https://playwright.dev/docs/api/class-testconfig",
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/locators",
+        "https://playwright.dev/docs/test-assertions",
+        "https://playwright.dev/docs/network"
+      ],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "legacy-debt-not-blocking",
+      "rule": "Findings on unchanged lines are listed as informational legacy debt and do not change the verdict",
+      "relevant_when": "A touched file contains pre-existing findings",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "none",
+      "docs": [],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "behavior-change-has-test",
+      "rule": "Application behavior changed by the pull request is covered by a new or updated test, or the description explains why not",
+      "relevant_when": "The pull request changes application code or specs",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "none",
+      "docs": [],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "test-fails-without-change",
+      "rule": "A new test would fail without the change under test; the reviewer asks for evidence (run output, --repeat-each result) when stability is uncertain",
+      "relevant_when": "The pull request adds a test",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/test-cli"
+      ]
+    },
+    {
+      "name": "no-duplicate-helpers",
+      "rule": "New page objects, fixtures or helpers do not duplicate an existing one",
+      "relevant_when": "The pull request adds a helper, fixture or page object",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "none",
+      "docs": [],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "config-blast-radius-stated",
+      "rule": "Changes to retries, timeouts, workers, projects or shared fixtures state which specs are affected",
+      "relevant_when": "playwright.config.* or a shared fixture changes",
+      "rule_ids": [
+        "PW401",
+        "PW402",
+        "PW403",
+        "PW404",
+        "PW405",
+        "PW406",
+        "PW407"
+      ],
+      "backing": "none",
+      "docs": [
+        "https://playwright.dev/docs/api/class-testconfig",
+        "https://playwright.dev/docs/test-retries",
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/trace-viewer",
+        "https://playwright.dev/docs/api/class-testoptions",
+        "https://playwright.dev/docs/test-parallel",
+        "https://playwright.dev/docs/test-use-options",
+        "https://playwright.dev/docs/test-reporters"
+      ],
+      "tag": "general-reviewer"
+    },
+    {
+      "name": "improvements-credited",
+      "rule": "The review notes changes that remove existing findings so authors get credit for paying down debt",
+      "relevant_when": "The pull request removes lines that earlier carried findings",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "none",
+      "docs": [],
+      "tag": "general-reviewer"
+    }
+  ]
+}

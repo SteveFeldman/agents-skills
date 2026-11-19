@@ -1,0 +1,75 @@
+{
+  "instruction": "Wait on conditions, never on time; do not bypass Playwright's actionability checks",
+  "relevant_when": "Test code waits for UI or network state, or performs click and input actions",
+  "context": "Playwright auto-waits for actionability and web-first assertions retry. Fixed sleeps, networkidle waits and forced actions hide timing bugs and make suites slow or flaky. A committed .only silently disables the rest of the suite.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "no-hard-waits",
+      "rule": "No page.waitForTimeout(), sleep() or setTimeout-based delays are used to wait for UI state in specs or page objects",
+      "relevant_when": "Code waits for the UI to update",
+      "rule_ids": [
+        "PW001",
+        "PW008"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/api/class-page"
+      ]
+    },
+    {
+      "name": "no-legacy-waits",
+      "rule": "waitForSelector(), page.$() and page.$$() are not used; a locator with an assertion or action replaces them",
+      "relevant_when": "Code waits for an element",
+      "rule_ids": [
+        "PW002"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/api/class-page",
+        "https://playwright.dev/docs/api/class-elementhandle"
+      ]
+    },
+    {
+      "name": "no-networkidle",
+      "rule": "waitForLoadState('networkidle') and waitUntil: 'networkidle' are not used; the test waits for a user-visible element",
+      "relevant_when": "Code waits for a page to finish loading",
+      "rule_ids": [
+        "PW003"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/api/class-page"
+      ]
+    },
+    {
+      "name": "no-bypassed-actionability",
+      "rule": "Neither { force: true } nor locator.evaluate(el => el.click()) is used to push through an obstruction; the obstruction is fixed or awaited (or a comment explains why a real click cannot work)",
+      "relevant_when": "A click, fill or check action is performed",
+      "rule_ids": [
+        "PW007"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/actionability"
+      ]
+    },
+    {
+      "name": "no-only-committed",
+      "rule": "test.only and describe.only are not present in committed code",
+      "relevant_when": "A spec file is added or changed",
+      "rule_ids": [
+        "PW005"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/api/class-testconfig"
+      ]
+    }
+  ]
+}

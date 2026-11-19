@@ -1,0 +1,1 @@
+{ "mode": "pr", "rules": { "PW001": 1, "PW101": 1, "PW105": 1, "PW201": 1, "PW302": 0 }, "blocking": 3, "legacy": 1 }

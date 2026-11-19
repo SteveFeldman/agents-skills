@@ -1,0 +1,76 @@
+{
+  "instruction": "Use web-first assertions; never verify element state with one-shot reads",
+  "relevant_when": "Test code asserts on element state, text, visibility or counts",
+  "context": "expect(locator) matchers retry until they pass or time out. Reads such as textContent(), innerText(), inputValue(), isVisible() and count() evaluate once, so asserting on their result races with rendering. Every test must also assert the behavior its title promises.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "web-first-assertions",
+      "rule": "Element state, text and counts are asserted with expect(locator).toBeVisible/toHaveText/toContainText/toHaveCount/toBeEnabled, not by reading a value and asserting on it",
+      "relevant_when": "A test or page-object method checks element content or state",
+      "rule_ids": [
+        "PW004"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/api/class-locator"
+      ]
+    },
+    {
+      "name": "no-swallowed-state-checks",
+      "rule": "isVisible().catch(() => false) probes are limited to genuinely optional UI, are not issued immediately after an action without a wait, and never replace an assertion; prefer locator.or() or a short waitFor",
+      "relevant_when": "A test branches on whether an element is present",
+      "rule_ids": [
+        "PW004",
+        "PW010"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/api/class-locator"
+      ]
+    },
+    {
+      "name": "assertion-present",
+      "rule": "Confirm the test explicitly verifies its intended outcome, including through a helper or another check the scanner may not recognize",
+      "relevant_when": "A test is added or changed",
+      "rule_ids": [
+        "PW201"
+      ],
+      "backing": "partial",
+      "tag": "engineering-best-practice",
+      "docs": [
+        "https://playwright.dev/docs/test-assertions"
+      ]
+    },
+    {
+      "name": "assertion-matches-title",
+      "rule": "The asserted outcome actually matches what the test title claims; a test titled for a cart update asserts the cart, not just that a page loaded",
+      "relevant_when": "A test is added or changed",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/best-practices"
+      ]
+    },
+    {
+      "name": "no-vacuous-negatives",
+      "rule": "A not.toBeVisible()/toHaveCount(0) assertion is preceded by a positive precondition so it cannot pass because the page never loaded",
+      "relevant_when": "A test asserts something is absent",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "none",
+      "docs": [
+        "https://playwright.dev/docs/test-assertions"
+      ],
+      "tag": "general-reviewer"
+    }
+  ]
+}

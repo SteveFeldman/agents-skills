@@ -1,0 +1,71 @@
+{
+  "instruction": "Make network-dependent behavior deterministic and race-free",
+  "relevant_when": "Tests verify API calls, depend on live backend data, or cover error and edge states",
+  "context": "A response wait must be registered before the action that triggers the request. States that cannot be forced on live data (server errors, out-of-stock, restricted regions) should be reproduced with route.fulfill or recorded HAR rather than left untested or skipped. route.abort() for blocking trackers is hygiene, not mocking.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "wait-before-action",
+      "rule": "page.waitForResponse/waitForRequest is started before the click or navigation that triggers it (promise created first, awaited after, or Promise.all)",
+      "relevant_when": "A test verifies that an API call happened",
+      "rule_ids": [
+        "PW301"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/network"
+      ]
+    },
+    {
+      "name": "edge-states-mocked",
+      "rule": "Error and edge states that cannot be produced reliably on live data are covered with route.fulfill or HAR replay, not skipped or left untested",
+      "relevant_when": "A scenario depends on a server error, empty state or restricted condition",
+      "rule_ids": [
+        "PW302"
+      ],
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/mock"
+      ]
+    },
+    {
+      "name": "explicit-fulfill-fields",
+      "rule": "route.fulfill sets status, contentType and body explicitly",
+      "relevant_when": "A response is mocked",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/mock"
+      ]
+    },
+    {
+      "name": "route-patterns-environment-agnostic",
+      "rule": "Route patterns use globs or regexes that work across environments rather than full hardcoded hostnames",
+      "relevant_when": "A route is registered",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "partial",
+      "docs": [
+        "https://playwright.dev/docs/network"
+      ]
+    },
+    {
+      "name": "third-party-isolated",
+      "rule": "Third-party scripts (analytics, chat, ads) are blocked or stubbed so they cannot affect test timing",
+      "relevant_when": "The app loads third-party scripts",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices"
+      ]
+    }
+  ]
+}

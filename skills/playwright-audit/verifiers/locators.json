@@ -1,0 +1,93 @@
+{
+  "instruction": "Select elements the way a user perceives them, using the project's accepted locator strategy",
+  "relevant_when": "Test code or page objects define or use locators",
+  "context": "Locator priority: role with accessible name, then label/placeholder/text, then the project's declared test-id attribute, then aria attributes, then ids, then class or structural CSS, then XPath. A project-wide test-id attribute declared in the profile or Playwright config is a first-class locator. Hashed CSS-module classes and XPath break on refactors and must be avoided.",
+  "sources": [
+    {
+      "type": "file",
+      "filename": "references/rules.md"
+    },
+    {
+      "type": "file",
+      "filename": "references/profile.md"
+    }
+  ],
+  "checklist": [
+    {
+      "name": "no-xpath",
+      "rule": "No XPath selectors are used",
+      "relevant_when": "A locator is defined",
+      "rule_ids": [
+        "PW101"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/locators"
+      ]
+    },
+    {
+      "name": "no-class-selectors",
+      "rule": "Locators do not depend on CSS class names, especially hashed or generated CSS-module classes; a role, label or test-id is used instead",
+      "relevant_when": "A locator is defined",
+      "rule_ids": [
+        "PW102"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/locators"
+      ]
+    },
+    {
+      "name": "role-first-for-interactive-elements",
+      "rule": "Buttons, links, headings and form fields with a clear accessible name are located with getByRole or getByLabel unless the project's test-id is documented as the standard",
+      "relevant_when": "A locator targets an interactive element",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices",
+        "https://playwright.dev/docs/locators"
+      ]
+    },
+    {
+      "name": "project-test-id-consistent",
+      "rule": "When the project declares a test-id attribute, test-id locators use that attribute consistently rather than mixing several conventions",
+      "relevant_when": "A locator uses a data-* attribute or getByTestId",
+      "rule_ids": [],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/locators",
+        "https://playwright.dev/docs/test-use-options"
+      ]
+    },
+    {
+      "name": "positional-locators-justified",
+      "rule": "Use the test, helper, and assertions to distinguish intentional ordering from position used as a substitute for identity. Surface only evidence-backed risks, as non-blocking suggestions; no adjacent comment is required.",
+      "relevant_when": "A locator uses a positional selector",
+      "rule_ids": [
+        "PW105"
+      ],
+      "judgment": true,
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/locators",
+        "https://playwright.dev/docs/best-practices"
+      ]
+    },
+    {
+      "name": "no-structural-selectors",
+      "rule": "Locators do not rely on tag chains or DOM position (for example 'article h2 a' or a bare 'button'); a role or filter by text is used",
+      "relevant_when": "A locator is defined",
+      "rule_ids": [
+        "PW103"
+      ],
+      "backing": "official",
+      "docs": [
+        "https://playwright.dev/docs/best-practices"
+      ]
+    }
+  ]
+}
