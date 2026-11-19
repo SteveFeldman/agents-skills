@@ -1,6 +1,6 @@
 'use strict';
 
-const { getRating, formatValue } = require('../../lib/cwv-collector');
+const { getRating, formatValue, getBreakdown } = require('../../lib/cwv-collector');
 
 function metric(name, value, attribution) {
   return {
@@ -8,6 +8,7 @@ function metric(name, value, attribution) {
     rating: getRating(name, value),
     formatted: formatValue(name, value),
     attribution,
+    breakdown: getBreakdown(name, attribution),
   };
 }
 
@@ -47,6 +48,7 @@ function makeResult(overrides = {}) {
       if (!('rating' in patch)) merged.rating = getRating(name, patch.value);
       if (!('formatted' in patch)) merged.formatted = formatValue(name, patch.value);
     }
+    if ('attribution' in patch && !('breakdown' in patch)) merged.breakdown = getBreakdown(name, merged.attribution);
     result.metrics[name] = merged;
   }
   const { metrics, ...rest } = overrides;

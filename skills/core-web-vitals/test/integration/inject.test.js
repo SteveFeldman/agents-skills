@@ -41,3 +41,15 @@ test('injection makes no network request for web-vitals', async () => {
 });
 
 test('WEB_VITALS_VERSION is pinned', () => assert.equal(WEB_VITALS_VERSION, '6.2.3'));
+
+test('collected LCP carries a phase breakdown from real attribution', async () => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto(`${srv.origin}/basic.html`);
+  const r = await collectCWV(page, { simulate: false, waitAfterLoad: 500 });
+  const b = r.metrics.LCP.breakdown;
+  assert.ok(b, 'LCP.breakdown should be present');
+  const lcpKeys = ['timeToFirstByte', 'resourceLoadDelay', 'resourceLoadDuration', 'elementRenderDelay'];
+  assert.ok(b.phases.length > 0);
+  for (const p of b.phases) assert.ok(lcpKeys.includes(p.key), p.key);
+  assert.ok(lcpKeys.includes(b.dominant));
+});

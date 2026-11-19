@@ -52,6 +52,7 @@ function printReport(result) {
       console.log(`  ${icon}  ${label} (${name})`);
       console.log(`       Value:  ${m.formatted}   [Good: ${good}]`);
       _printAttribution(name, m.attribution);
+      _printBreakdown(m.breakdown);
     } else {
       const label = THRESHOLDS[name]?.label || name;
       console.log(`  ⏳  ${label} (${name}) — not captured`);
@@ -94,6 +95,14 @@ function printReport(result) {
   }
   console.log(`  Collected in ${result.collectionDurationMs}ms`);
   console.log('══════════════════════════════════════════════\n');
+}
+
+function _printBreakdown(breakdown) {
+  if (!breakdown) return;
+  console.log('       Breakdown:');
+  for (const r of _breakdownRows(breakdown)) {
+    console.log(`         ${r.label.padEnd(24)} ${String(r.ms + 'ms').padStart(8)} ${String(r.pct + '%').padStart(5)}${r.dominant ? '  ◀ dominant' : ''}`);
+  }
 }
 
 function _printAttribution(name, attribution) {
@@ -158,34 +167,6 @@ function printComparison(results) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const RECOMMENDATIONS = {
-  LCP: {
-    'needs-improvement': [
-      'Preload the LCP resource with `<link rel="preload">` or set `fetchpriority="high"` on the element.',
-      'Ensure the LCP image is served from a CDN close to your users.',
-      'Check if the LCP resource is render-blocking — eliminate or defer any CSS/JS ahead of it.',
-      'Use next-gen image formats (WebP/AVIF) and serve correctly sized images.',
-    ],
-    poor: [
-      'Preload the LCP resource immediately — add `<link rel="preload" as="image">` in `<head>`.',
-      'Audit server response time (TTFB > 600ms is the most common LCP blocker).',
-      'Remove render-blocking resources above the fold entirely.',
-      'Consider server-side rendering or static generation to reduce time-to-first-byte.',
-      'Use a CDN — if LCP resource is on origin, latency alone can push past 4s.',
-    ],
-  },
-  INP: {
-    'needs-improvement': [
-      'Break up long JavaScript tasks (>50ms) using `scheduler.yield()` or `setTimeout(..., 0)`.',
-      'Defer non-critical third-party scripts (analytics, chat widgets) until after page load.',
-      'Use `requestAnimationFrame` to batch DOM reads and writes.',
-    ],
-    poor: [
-      'Profile with Chrome DevTools Performance panel — identify the long tasks blocking the main thread.',
-      'Audit third-party scripts; each synchronous third party can add 50–200ms to INP.',
-      'Move heavy computation off the main thread using Web Workers.',
-      'Audit event handlers for synchronous DOM access patterns that force style recalculation.',
-    ],
-  },
   CLS: {
     'needs-improvement': [
       'Add explicit `width` and `height` attributes to all `<img>` and `<video>` elements.',
@@ -223,9 +204,84 @@ const RECOMMENDATIONS = {
   },
 };
 
+const PHASE_RECOMMENDATIONS = {
+  timeToFirstByte: [
+    'Cache the HTML at a CDN or edge node so the document is served close to the visitor instead of rendered per request.',
+    'Profile server render time and slow backend calls (database queries, upstream APIs) that run before the first byte is sent.',
+    'Avoid redirect chains on the landing URL; link to the final canonical URL directly.',
+  ],
+  resourceLoadDelay: [
+    'Put the LCP image in the initial HTML as an `<img>` with `fetchpriority="high"` so the preload scanner finds it immediately; preload it only if it is otherwise discovered late (CSS background, JS-injected).',
+    'Do not lazy-load the LCP image; remove `loading="lazy"` and any JS that sets `src` after hydration.',
+    'Remove render-blocking scripts and stylesheets that delay the browser from requesting the image.',
+  ],
+  resourceLoadDuration: [
+    'Shrink the LCP resource: serve AVIF or WebP at the displayed size, with `srcset` and `sizes` for responsive widths.',
+    'Serve the resource from a CDN over HTTP/2 or HTTP/3 with long-lived cache headers.',
+    'Reduce competing downloads in the first seconds so the LCP resource gets full bandwidth.',
+  ],
+  elementRenderDelay: [
+    'Remove render-blocking CSS and synchronous scripts that keep the element from painting once its resource has arrived.',
+    'Render the LCP element on the server instead of waiting for client-side JavaScript to build it.',
+    'If a web font gates the LCP text, use `font-display: swap` and preload the font file.',
+  ],
+  inputDelay: [
+    'Break up long tasks that run during load and idle time so the main thread is free when the user interacts.',
+    'Defer or lazy-load third-party scripts (tags, chat widgets, A/B tools) that occupy the main thread.',
+    'Avoid starting heavy timers or polling loops that can overlap with user input.',
+  ],
+  processingDuration: [
+    'Break up the event handler and yield to the main thread with `scheduler.yield()` between the visible update and the remaining work.',
+    'Move non-urgent work (analytics, logging, state sync) out of the handler with `requestIdleCallback` or a deferred task.',
+    'Move heavy computation to a Web Worker, and avoid forced synchronous layout by batching DOM reads before writes.',
+  ],
+  presentationDelay: [
+    'Reduce the amount of DOM the interaction re-renders; scope updates to the changed subtree.',
+    'Use `content-visibility: auto` on large off-screen sections to cut style and layout cost.',
+    'Avoid expensive CSS selectors and layout-triggering style changes in the frame after the interaction.',
+  ],
+};
+
+/**
+ * Phase-keyed advice for LCP/INP: only for non-good metrics, only phases with
+ * share >= 0.1, dominant phase first.
+ *
+ * @returns {Array<{key:string,label:string,items:string[]}>}
+ */
+function getPhaseRecommendations(metric) {
+  if (!metric || metric.rating === 'good' || metric.rating === 'unknown') return [];
+  const b = metric.breakdown;
+  if (!b) return [];
+  const picked = b.phases.filter((p) => p.share >= 0.1 && PHASE_RECOMMENDATIONS[p.key]);
+  picked.sort((x, y) => (y.key === b.dominant) - (x.key === b.dominant));
+  return picked.map((p) => ({ key: p.key, label: p.label, items: PHASE_RECOMMENDATIONS[p.key] }));
+}
+
+/** Breakdown rows shared by all report formats. */
+function _breakdownRows(breakdown) {
+  return breakdown.phases.map((p) => ({
+    label: p.label,
+    ms: Math.round(p.ms),
+    pct: Math.round(p.share * 100),
+    share: p.share,
+    dominant: p.key === breakdown.dominant,
+  }));
+}
+
 function getRecommendations(name, rating) {
   if (rating === 'good' || rating === 'unknown') return [];
   return RECOMMENDATIONS[name]?.[rating] ?? [];
+}
+
+/**
+ * Recommendation groups for one metric: phase-keyed for LCP/INP, rating-keyed otherwise.
+ * Returns [] or [{ metric, groups: [{ label, items }] }].
+ */
+function _recommendationGroups(name, m) {
+  const groups = (name === 'LCP' || name === 'INP')
+    ? getPhaseRecommendations(m).map((g) => ({ label: g.label, items: g.items }))
+    : [{ label: null, items: getRecommendations(name, m.rating) }].filter((g) => g.items.length);
+  return groups.length ? [{ metric: name, groups }] : [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -331,9 +387,6 @@ function generateMarkdownReport(results, options = {}) {
         if (name === 'LCP') {
           if (a.target)  lines.push(`- Element: \`${a.target}\``);
           if (a.url)     lines.push(`- Resource: \`${a.url}\``);
-          if (a.timeToFirstByte != null) lines.push(`- TTFB contribution: ${Math.round(a.timeToFirstByte)}ms`);
-          if (a.resourceLoadDelay != null) lines.push(`- Resource load delay: ${Math.round(a.resourceLoadDelay)}ms`);
-          if (a.resourceLoadDuration != null) lines.push(`- Resource load duration: ${Math.round(a.resourceLoadDuration)}ms`);
         }
         if (name === 'CLS') {
           if (a.largestShiftTarget) lines.push(`- Largest shifting element: \`${a.largestShiftTarget}\``);
@@ -342,31 +395,41 @@ function generateMarkdownReport(results, options = {}) {
         if (name === 'INP') {
           if (a.interactionType && a.interactionTarget)
             lines.push(`- Interaction: \`${a.interactionType}\` on \`${a.interactionTarget}\``);
-          if (a.inputDelay != null)        lines.push(`- Input delay: ${Math.round(a.inputDelay)}ms`);
-          if (a.processingDuration != null) lines.push(`- Processing duration: ${Math.round(a.processingDuration)}ms`);
-          if (a.presentationDelay != null) lines.push(`- Presentation delay: ${Math.round(a.presentationDelay)}ms`);
         }
         lines.push('');
       }
+    }
+
+    // Phase breakdowns
+    for (const name of ['LCP', 'INP']) {
+      const b = r.metrics?.[name]?.breakdown;
+      if (!b) continue;
+      lines.push(`#### ${name} breakdown`);
+      lines.push('');
+      lines.push('| Phase | Time | Share |');
+      lines.push('|-------|------|-------|');
+      for (const row of _breakdownRows(b)) {
+        lines.push(`| ${row.label} | ${row.ms}ms | ${row.pct}%${row.dominant ? ' ◀ dominant' : ''} |`);
+      }
+      lines.push('');
     }
 
     // Recommendations
     const recs = CORE.flatMap((n) => {
       const m = r.metrics?.[n];
       if (!m) return [];
-      return getRecommendations(n, m.rating).map((rec) => ({ metric: n, rec }));
+      return _recommendationGroups(n, m);
     });
 
     if (recs.length > 0) {
       lines.push('#### Recommendations');
       lines.push('');
-      let lastMetric = null;
-      for (const { metric, rec } of recs) {
-        if (metric !== lastMetric) {
-          lines.push(`**${metric} (${THRESHOLDS[metric].label}):**`);
-          lastMetric = metric;
+      for (const { metric, groups } of recs) {
+        lines.push(`**${metric} (${THRESHOLDS[metric].label}):**`);
+        for (const g of groups) {
+          if (g.label) lines.push(`**${g.label}:**`);
+          for (const rec of g.items) lines.push(`- ${rec}`);
         }
-        lines.push(`- ${rec}`);
       }
       lines.push('');
     }
@@ -428,6 +491,17 @@ function generateHtmlReport(results, options = {}) {
       </div>`;
   }
 
+  const SEG_COLORS = ['#4361ee', '#7209b7', '#f72585', '#4cc9f0'];
+
+  function breakdownBar(breakdown) {
+    const rows = _breakdownRows(breakdown);
+    const segs = rows.map((r, i) =>
+      `<div class="bd-seg" style="width:${(r.share * 100).toFixed(1)}%;background:${SEG_COLORS[i % SEG_COLORS.length]}" title="${_esc(`${r.label}: ${r.ms}ms`)}"></div>`).join('');
+    const legend = rows.map((r, i) =>
+      `<span class="bd-key"><i style="background:${SEG_COLORS[i % SEG_COLORS.length]}"></i>${_esc(r.label)} ${r.ms}ms (${r.pct}%)${r.dominant ? ' ◀ dominant' : ''}</span>`).join('');
+    return `<div class="bd-bar">${segs}</div><div class="bd-legend">${legend}</div>`;
+  }
+
   function attributionSection(result) {
     const rows = [];
     for (const name of CORE) {
@@ -438,10 +512,6 @@ function generateHtmlReport(results, options = {}) {
       if (name === 'LCP') {
         if (a.target)                  details.push(['Element', `<code>${_esc(a.target)}</code>`]);
         if (a.url)                     details.push(['Resource URL', `<code class="url">${_esc(a.url)}</code>`]);
-        if (a.timeToFirstByte != null)       details.push(['TTFB contribution', `${Math.round(a.timeToFirstByte)}ms`]);
-        if (a.resourceLoadDelay != null)     details.push(['Resource load delay', `${Math.round(a.resourceLoadDelay)}ms`]);
-        if (a.resourceLoadDuration != null)  details.push(['Resource load duration', `${Math.round(a.resourceLoadDuration)}ms`]);
-        if (a.elementRenderDelay != null)    details.push(['Element render delay', `${Math.round(a.elementRenderDelay)}ms`]);
       }
       if (name === 'CLS') {
         if (a.largestShiftTarget) details.push(['Largest shifting element', `<code>${_esc(a.largestShiftTarget)}</code>`]);
@@ -451,14 +521,12 @@ function generateHtmlReport(results, options = {}) {
       if (name === 'INP') {
         if (a.interactionType && a.interactionTarget)
           details.push(['Interaction', `<code>${_esc(a.interactionType)}</code> on <code>${_esc(a.interactionTarget)}</code>`]);
-        if (a.inputDelay != null)         details.push(['Input delay', `${Math.round(a.inputDelay)}ms`]);
-        if (a.processingDuration != null)  details.push(['Processing duration', `${Math.round(a.processingDuration)}ms`]);
-        if (a.presentationDelay != null)   details.push(['Presentation delay', `${Math.round(a.presentationDelay)}ms`]);
         if (a.longAnimationFrameEntries?.length) {
           details.push(['Long animation frames', `${a.longAnimationFrameEntries.length} frame(s) blocked`]);
         }
       }
-      if (details.length === 0) continue;
+      const bar = m.breakdown ? breakdownBar(m.breakdown) : '';
+      if (details.length === 0 && !bar) continue;
       const c = RATING_COLORS[m.rating] ?? RATING_COLORS.unknown;
       rows.push(`
         <div class="attribution-block" style="border-left:3px solid ${c.border}">
@@ -466,6 +534,7 @@ function generateHtmlReport(results, options = {}) {
           <table class="attribution-table">
             ${details.map(([k, v]) => `<tr><td class="attr-key">${k}</td><td class="attr-val">${v}</td></tr>`).join('')}
           </table>
+          ${bar}
         </div>`);
     }
     return rows.length > 0
@@ -476,23 +545,18 @@ function generateHtmlReport(results, options = {}) {
   function recommendationsSection(result) {
     const recs = CORE.flatMap((n) => {
       const m = result.metrics?.[n];
-      if (!m) return [];
-      return getRecommendations(n, m.rating).map((rec) => ({ metric: n, rec }));
+      return m ? _recommendationGroups(n, m) : [];
     });
     if (recs.length === 0) return '';
 
-    const byMetric = {};
-    for (const { metric, rec } of recs) {
-      (byMetric[metric] = byMetric[metric] ?? []).push(rec);
-    }
-
-    const html = Object.entries(byMetric).map(([name, recList]) => {
+    const html = recs.map(({ metric: name, groups }) => {
       const m = result.metrics[name];
       const c = RATING_COLORS[m?.rating] ?? RATING_COLORS.unknown;
+      const body = groups.map((g) => `${g.label ? `<div class="rec-phase">${_esc(g.label)}</div>` : ''}<ul>${g.items.map((r) => `<li>${_esc(r)}</li>`).join('')}</ul>`).join('');
       return `
         <div class="rec-group">
           <div class="rec-metric-name" style="color:${c.border}">${name} — ${THRESHOLDS[name].label}</div>
-          <ul>${recList.map((r) => `<li>${_esc(r)}</li>`).join('')}</ul>
+          ${body}
         </div>`;
     }).join('');
 
@@ -622,9 +686,15 @@ function generateHtmlReport(results, options = {}) {
   .attr-key { color: #718096; width: 180px; padding: .2rem 0; vertical-align: top; }
   .attr-val { color: #2d3748; padding: .2rem 0 .2rem .5rem; word-break: break-all; }
 
+  .bd-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin-top: .6rem; background: #e2e8f0; }
+  .bd-seg { height: 100%; min-width: 0; }
+  .bd-legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .75rem; color: #4a5568; margin-top: .4rem; }
+  .bd-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+
   .rec-section { display: flex; flex-direction: column; gap: 1rem; }
   .rec-group { background: #fafafa; border-radius: 8px; padding: 1rem; }
   .rec-metric-name { font-weight: 700; font-size: .88rem; margin-bottom: .5rem; }
+  .rec-phase { font-weight: 600; font-size: .82rem; color: #2d3748; margin: .5rem 0 .25rem; }
   .rec-group ul { padding-left: 1.25rem; }
   .rec-group li { font-size: .85rem; color: #4a5568; margin-bottom: .3rem; }
 

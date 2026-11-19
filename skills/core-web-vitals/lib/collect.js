@@ -3,6 +3,7 @@
 const { THRESHOLDS, RATING_ICONS, getRating, formatValue } = require('./thresholds');
 
 const { createMeasuredPage, presetConditions } = require('./conditions');
+const { getBreakdown } = require('./breakdown');
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -238,6 +239,7 @@ async function collectCWV(page, options = {}) {
       ratingIcon: RATING_ICONS[rating],
       threshold: THRESHOLDS[name] || null,
       attribution: includeAttribution ? m.attribution : undefined,
+      breakdown: getBreakdown(name, m.attribution),
     };
   }
 
