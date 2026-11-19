@@ -162,7 +162,7 @@ Place skill directories in `~/.copilot/skills/` to make them available as slash 
 | Skill | Description |
 |---|---|
 | `playwright-dev` | Write and execute Playwright browser checks and API checks with auto-detection and universal executor |
-| `core-web-vitals` | Measure and assert Core Web Vitals (LCP, INP, CLS) in Playwright scripts with HTML/Markdown reporting |
+| `core-web-vitals` | Measure Core Web Vitals (LCP, INP, CLS) in Playwright under mobile/desktop conditions, diagnose LCP/INP phases, and save HTML/Markdown lab reports |
 | `evinced-web-sdk` | Add accessibility scanning to Playwright checks via Evinced SDK for WCAG compliance |
 | `browserstack-test-analytics` | Analyze BrowserStack Test Management plans, runs, cases, and execution results; save a traceable Markdown report |
 | `confluence-daily` | Publish daily test-cycle reports from Markdown as Confluence child pages under a summary parent via the Atlassian MCP |
