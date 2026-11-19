@@ -427,9 +427,11 @@ function generateMarkdownReport(results, options = {}) {
       for (const { metric, groups } of recs) {
         lines.push(`**${metric} (${THRESHOLDS[metric].label}):**`);
         for (const g of groups) {
-          if (g.label) lines.push(`**${g.label}:**`);
+          lines.push('');
+          if (g.label) { lines.push(`**${g.label}:**`); lines.push(''); }
           for (const rec of g.items) lines.push(`- ${rec}`);
         }
+        lines.push('');
       }
       lines.push('');
     }
@@ -506,8 +508,8 @@ function generateHtmlReport(results, options = {}) {
     const rows = [];
     for (const name of CORE) {
       const m = result.metrics?.[name];
-      if (!m?.attribution) continue;
-      const a = m.attribution;
+      if (!m?.attribution && !m?.breakdown) continue;
+      const a = m.attribution || {};
       const details = [];
       if (name === 'LCP') {
         if (a.target)                  details.push(['Element', `<code>${_esc(a.target)}</code>`]);

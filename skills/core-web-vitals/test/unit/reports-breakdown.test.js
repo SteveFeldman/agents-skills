@@ -54,3 +54,23 @@ test('printReport indents breakdown lines', () => {
   try { printReport(poorInp()); } finally { console.log = orig; }
   assert.ok(lines.some((l) => /^\s{7,}Processing duration\s+500ms\s+83%/.test(l)));
 });
+
+test('breakdown renders in all formats when attribution is excluded', () => {
+  const base = makeResult();
+  const r = makeResult({ metrics: { LCP: { attribution: undefined, breakdown: base.metrics.LCP.breakdown } } });
+  assert.equal(r.metrics.LCP.attribution, undefined);
+  assert.match(generateHtmlReport(r), /title="Resource load duration: 900ms"/);
+  assert.match(generateMarkdownReport(r), /#### LCP breakdown/);
+  const lines = [];
+  const orig = console.log;
+  console.log = (...a) => lines.push(a.join(' '));
+  try { printReport(r); } finally { console.log = orig; }
+  assert.ok(lines.some((l) => l.includes('Resource load duration')));
+});
+
+test('markdown recommendation labels are separate blocks', () => {
+  const lines = generateMarkdownReport(poorInp()).split('\n');
+  const idx = lines.map((l, i) => (/^\*\*.+:\*\*$/.test(l) ? i : -1)).filter((i) => i > 0);
+  assert.ok(idx.length >= 2);
+  for (const i of idx) assert.equal(lines[i - 1], '', lines[i]);
+});
