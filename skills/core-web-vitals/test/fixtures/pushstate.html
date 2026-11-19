@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Push state</title></head>
+<body><h1>Router fixture</h1>
+<p id="view">Home</p>
+<button id="route">Go</button>
+<script>
+document.getElementById('route').addEventListener('click', () => {
+  history.pushState({}, '', '/routed');
+  document.getElementById('view').textContent = 'Routed';
+});
+</script>
+</body></html>

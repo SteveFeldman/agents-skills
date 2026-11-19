@@ -37,6 +37,7 @@ test('self-navigating page returns warning instead of throwing', async () => {
   const r = await collectCWV(page, { simulate: true, waitAfterLoad: 1500 });
   assert.ok(r.warnings.some((w) => w.includes('navigated')));
   assert.equal(typeof r.metrics, 'object');
+  assert.ok(r.metrics.TTFB || r.metrics.FCP, 'early metrics from the original document are kept');
 });
 
 test('interact callback drives INP for a specific interaction', async () => {
@@ -50,4 +51,12 @@ test('warnings is an empty array on a clean run', async () => {
   const page = await newPage('basic.html');
   const r = await collectCWV(page, { simulate: false, waitAfterLoad: 300 });
   assert.deepEqual(r.warnings, []);
+});
+
+test('same-document URL change is not treated as navigation', async () => {
+  const page = await newPage('pushstate.html');
+  const r = await collectCWV(page, { interact: (p) => p.click('#route'), waitAfterLoad: 500 });
+  assert.match(page.url(), /\/routed$/);
+  assert.deepEqual(r.warnings, []);
+  assert.ok(r.metrics.INP);
 });

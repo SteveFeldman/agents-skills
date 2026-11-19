@@ -169,16 +169,26 @@ async function collectCWV(page, options = {}) {
 
   const originalUrl = page.url();
   let lastSnapshot = {};
-  const snapshot = async () => {
-    lastSnapshot = await page.evaluate(() =>
-      JSON.parse(JSON.stringify(window.__cwvData || {})),
-    );
-  };
 
+  // Reads collector data from the current document. Returns null when the
+  // collectors are gone, which means a different document is now loaded.
+  const readData = () =>
+    page.evaluate(() =>
+      window.__cwvData ? JSON.parse(JSON.stringify(window.__cwvData)) : null,
+    );
+
+  const NAVIGATED = Symbol('navigated');
   let raw;
   try {
-    // Let the page settle and let early metrics (FCP, TTFB, LCP) register
-    await page.waitForTimeout(waitAfterLoad);
+    // Let the page settle (early metrics: FCP, TTFB, LCP), refreshing the
+    // snapshot only while still on the original document.
+    const deadline = Date.now() + waitAfterLoad;
+    while (Date.now() < deadline) {
+      await page.waitForTimeout(Math.min(250, Math.max(0, deadline - Date.now())));
+      const data = await readData();
+      if (data === null) throw NAVIGATED;
+      lastSnapshot = data;
+    }
 
     // The browser stops LCP at first input, so input must come after load
     await page.waitForLoadState('load', { timeout: 15000 }).catch(() => {
@@ -186,7 +196,9 @@ async function collectCWV(page, options = {}) {
         'Page did not reach the load event within 15s; LCP may be truncated by simulated input.',
       );
     });
-    await snapshot();
+    const beforeInput = await readData();
+    if (beforeInput === null) throw NAVIGATED;
+    lastSnapshot = beforeInput;
 
     if (typeof interact === 'function') {
       await interact(page);
@@ -197,16 +209,17 @@ async function collectCWV(page, options = {}) {
     // Flush pending metric reports
     await forceMetricFlush(page);
 
-    // Retrieve collected data from the browser context
-    raw = await page.evaluate(() => window.__cwvData || {});
-    if (page.url() !== originalUrl) throw new Error('navigated');
+    // Same document (even if the URL changed via pushState) keeps live data;
+    // a cross-document navigation leaves no collectors behind.
+    raw = await readData();
+    if (raw === null) throw NAVIGATED;
   } catch (err) {
-    const currentUrl = page.url();
-    const navigated =
-      currentUrl !== originalUrl || /Execution context was destroyed|navigat/i.test(err.message);
-    if (!navigated) throw err;
+    const message = String(err?.message ?? err);
+    if (err !== NAVIGATED && !/Execution context was destroyed|navigat/i.test(message)) {
+      throw err;
+    }
     warnings.push(
-      `Page navigated to ${currentUrl} during collection; metrics are from ${originalUrl} before the navigation (INP may be missing).`,
+      `Page navigated to ${page.url()} during collection; metrics are from ${originalUrl} before the navigation (INP may be missing).`,
     );
     raw = lastSnapshot;
   }
