@@ -158,7 +158,7 @@ async function forceMetricFlush(page) {
  * @param {boolean} [options.simulate=true]        - Simulate clicks/keys to trigger INP
  * @param {(page) => Promise<void>} [options.interact] - Custom interaction; runs instead of simulation
  * @param {number}  [options.waitAfterLoad=1500]   - ms to wait after injection before collecting
- * @param {boolean} [options.includeAttribution=true] - Include attribution debug data
+ * @param {boolean} [options.includeAttribution=true] - Include raw attribution debug data. When false, raw attribution is omitted; the derived LCP/INP breakdown is kept and rendered in every report format.
  * @param {object}  [options.conditions]           - Conditions from createMeasuredPage(); recorded on the result
  *
  * @returns {Promise<CWVResult>}
