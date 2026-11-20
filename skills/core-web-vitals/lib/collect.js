@@ -249,7 +249,11 @@ async function collectCWV(page, options = {}) {
       const isNav =
         err === NAVIGATED ||
         CONTEXT_DESTROYED.test(message) ||
-        (await readData().catch(() => null)) === null;
+        // A destroyed context means a new document; any other read failure
+        // (page closed, browser crashed) leaves the caller's error standing.
+        (await readData().catch((e) =>
+          CONTEXT_DESTROYED.test(String(e?.message ?? e)) ? null : undefined,
+        )) === null;
       if (!isNav) throw err;
       navigated = true;
       warnings.push(

@@ -73,6 +73,20 @@ test('interact errors are rethrown, not reported as navigation', async () => {
   );
 });
 
+test('page closed inside interact rethrows the caller error, not navigation', async () => {
+  const page = await newPage('basic.html');
+  await assert.rejects(
+    collectCWV(page, {
+      interact: async (p) => {
+        await p.close();
+        throw new Error('interact failed after close');
+      },
+      waitAfterLoad: 200,
+    }),
+    /interact failed after close/,
+  );
+});
+
 test('meta refresh before collection does not crash', async () => {
   for (let i = 0; i < 5; i++) {
     const page = await (await browser.newContext()).newPage();
